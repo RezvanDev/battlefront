@@ -41,7 +41,7 @@ const Home: React.FC<HomeProps> = ({ balance, onDeposit }) => {
         
         <div 
           className="absolute bg-gray-800 rounded-2xl border border-gray-700 flex items-center"
-          style={{ width: '343px', height: '111px', top: '351px', left: '16px', padding: '16px' }}
+          style={{ width: '343px', height: '111px', top: '351px', left: '30px', padding: '16px' }}
         >
           <button 
             onClick={() => navigate('/create-game')}
