@@ -37,16 +37,30 @@ const Home: React.FC<HomeProps> = ({ balance, onDeposit }) => {
           src={dogImage}
           alt="Game Character"
           className="absolute"
-          style={{ width: '114px', height: '114px', top: '222px', left: '130px', borderRadius: '91px' }}
+          style={{ width: '114px', height: '114px', top: '180px', left: '130px', borderRadius: '91px' }}
         />
         
-        <img
-          src={createGameImage}
-          alt="Создать игру"
-          className="absolute cursor-pointer"
-          style={{ width: '343px', height: '111px', top: '351px', left: '16px' }}
+        <div
+          className="absolute cursor-pointer bg-cover bg-center rounded-2xl border border-gray-700"
+          style={{
+            backgroundImage: `url(${createGameImage})`,
+            width: '343px',
+            height: '111px',
+            top: '351px',
+            left: '16px',
+            borderRadius: '16px',
+            padding: '16px',
+          }}
           onClick={() => navigate('/create-game')}
-        />
+        >
+          <div className="flex items-center justify-between h-full">
+            <div className="flex items-center gap-6">
+              <span className="text-2xl text-yellow-400">🎮</span>
+              <span className="text-xl font-semibold">Создать игру!</span>
+            </div>
+            <span className="text-2xl">&gt;</span>
+          </div>
+        </div>
       </div>
     </div>
   );
