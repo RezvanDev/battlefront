@@ -1,6 +1,6 @@
 // src/components/Deposit.tsx
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+
 
 interface DepositOption {
   id: string;
@@ -14,7 +14,7 @@ const depositOptions: DepositOption[] = [
 ];
 
 const Deposit: React.FC = () => {
-  const navigate = useNavigate();
+  
 
   const handleDeposit = (optionId: string) => {
     // Здесь будет логика для обработки депозита

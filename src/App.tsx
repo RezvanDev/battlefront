@@ -5,7 +5,7 @@ import Home from './components/Home';
 import Deposit from './components/Deposit';
 
 const App: React.FC = () => {
-  const [balance, setBalance] = useState(10000); // Начальный баланс
+  const [balance,] = useState(10000); // Начальный баланс
 
   const AppContent: React.FC = () => {
     const navigate = useNavigate();
