@@ -29,9 +29,9 @@ const Game: React.FC = () => {
       try {
         const data = await getGameStatus(lobbyCode);
         setGameStatus(data.game);
-        if (data.game.status === 'FINISHED') {
-          // Здесь можно добавить логику завершения игры
-          navigate('/');
+        if (data.game.status === 'FINISHED' && data.game.creatorRoundsPlayed === 3 && data.game.participantRoundsPlayed === 3) {
+          // Показываем результат игры
+          showFinalResult(data.game);
         }
       } catch (error) {
         console.error('Error fetching game status:', error);
@@ -43,6 +43,20 @@ const Game: React.FC = () => {
 
     return () => clearInterval(interval);
   }, [lobbyCode, navigate]);
+
+  const showFinalResult = (game: any) => {
+    let winner;
+    if (game.creatorWins > game.participantWins) {
+      winner = 'Создатель игры';
+    } else if (game.participantWins > game.creatorWins) {
+      winner = 'Второй игрок';
+    } else {
+      winner = 'Ничья';
+    }
+
+    alert(`Игра завершена!\nПобедитель: ${winner}\nСчет: ${game.creatorWins}:${game.participantWins}`);
+    navigate('/');
+  };
 
   useEffect(() => {
     if (isSpinning) {
@@ -82,20 +96,20 @@ const Game: React.FC = () => {
 
     try {
       const data = await spinWheel(user.id.toString(), lobbyCode, selectedColor);
-      const { isCreatorWin, isParticipantWin, angle, wheelColor } = data.result;
+      const { isWin, angle, wheelColor, updatedGame } = data.result;
 
       let currentAngle = rotationAngle;
       spinIntervalRef.current = window.setInterval(() => {
         if (currentAngle >= angle) {
-          handleStop(isCreatorWin || isParticipantWin, angle, wheelColor);
+          handleStop(isWin, angle, wheelColor);
         } else {
           currentAngle += 10;
           setRotationAngle(currentAngle % 360);
         }
       }, 20);
 
-      if (data.result.updatedGame) {
-        setGameStatus(data.result.updatedGame);
+      if (updatedGame) {
+        setGameStatus(updatedGame);
       }
     } catch (error) {
       console.error('Error spinning wheel:', error);
@@ -147,15 +161,17 @@ const Game: React.FC = () => {
   }
 
   const isCreator = user && user.id === gameStatus.creator.id;
-  const isPlayerTurn = (isCreator && gameStatus.currentTurn === 'CREATOR') || (!isCreator && gameStatus.currentTurn === 'PARTICIPANT');
+  const playerRounds = isCreator ? gameStatus.creatorRoundsPlayed : gameStatus.participantRoundsPlayed;
+  const canPlay = playerRounds < 3;
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-b from-gray-900 to-black text-white p-4">
       <div className="text-center mb-4">
         <div className="text-2xl font-bold">Игра: {lobbyCode}</div>
         <div className="text-xl mt-2">Статус: {gameStatus.status}</div>
-        <div className="text-xl mt-2">Раунд: {gameStatus.currentRound}/3</div>
+        <div className="text-xl mt-2">Ваши раунды: {playerRounds}/3</div>
         <div className="text-xl mt-2">Ставка: {gameStatus.bet}$</div>
+        <div className="text-xl mt-2">Счет: {gameStatus.creatorWins}:{gameStatus.participantWins}</div>
       </div>
 
       <div className="flex-grow flex flex-col items-center justify-center relative">
@@ -177,7 +193,7 @@ const Game: React.FC = () => {
         </div>
       </div>
 
-      {isPlayerTurn && !playerColor && !isSpinning && (
+      {canPlay && !playerColor && !isSpinning && (
         <div className="flex justify-center space-x-4 mt-4">
           <button
             className="w-1/2 py-4 bg-red-600 rounded-xl"
@@ -215,9 +231,9 @@ const Game: React.FC = () => {
         </div>
       )}
 
-      {!isPlayerTurn && (
+      {!canPlay && (
         <div className="text-center mt-4">
-          <p className="text-xl">Ожидание хода другого игрока...</p>
+          <p className="text-xl">Вы сыграли все свои раунды. Ожидание завершения игры...</p>
         </div>
       )}
     </div>
