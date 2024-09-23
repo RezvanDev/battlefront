@@ -11,14 +11,18 @@ interface HomeProps {
 
 const Home: React.FC<HomeProps> = ({ onDeposit }) => {
   const navigate = useNavigate();
-  const { user, loading } = useUser();
+  const { user, loading, error } = useUser();
 
   if (loading) {
     return <div>Loading...</div>;
   }
 
+  if (error) {
+    return <div>Error: {error}</div>;
+  }
+
   if (!user) {
-    return <div>Please log in</div>;
+    return <div>Unable to load user data. Please try again.</div>;
   }
 
   return (

@@ -14,34 +14,49 @@ interface UserContextType {
   user: User | null;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
   loading: boolean;
+  error: string | null;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [user, setUser] = useState<User | null>(null);
-    const [loading, setLoading] = useState(true);
-  
-    useEffect(() => {
-      const fetchUser = async () => {
-        const token = localStorage.getItem('token');
-        if (token) {
-          try {
-            const response = await apiClient.get('/users/me');
-            setUser(response.data);
-          } catch (error) {
-            console.error('Error fetching user:', error);
-            localStorage.removeItem('token');
-          }
-        }
-        setLoading(false);
+declare global {
+  interface Window {
+    Telegram: {
+      WebApp: {
+        initData: string;
       };
-  
-      fetchUser();
-    }, []);
+    };
+  }
+}
+
+export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const initData = window.Telegram?.WebApp?.initData;
+        if (!initData) {
+          throw new Error('Telegram WebApp initData not found');
+        }
+
+        const response = await apiClient.post('/auth/telegram', { initData });
+        setUser(response.data);
+      } catch (error) {
+        console.error('Error fetching user:', error);
+        setError('Failed to authenticate user');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, []);
 
   return (
-    <UserContext.Provider value={{ user, setUser, loading }}>
+    <UserContext.Provider value={{ user, setUser, loading, error }}>
       {children}
     </UserContext.Provider>
   );
