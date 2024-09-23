@@ -17,7 +17,6 @@ const Game: React.FC = () => {
   const [landedColor, setLandedColor] = useState<'red' | 'black' | null>(null);
 
   const { lobbyCode } = useParams<{ lobbyCode: string }>();
-  const navigate = useNavigate();
   const { user } = useTelegram();
 
   const spinIntervalRef = useRef<number | null>(null);
