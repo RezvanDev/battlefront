@@ -45,18 +45,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const initData = window.Telegram?.WebApp?.initData;
-        const initDataUnsafe = window.Telegram?.WebApp?.initDataUnsafe;
-        
-        if (!initData || !initDataUnsafe.user) {
-          throw new Error('Telegram WebApp data not found');
-        }
-
-        const response = await apiClient.post('/auth/telegram', { 
-          initData,
-          user: initDataUnsafe.user
-        });
-
+        const response = await apiClient.post('/auth/telegram');
         setUser(response.data);
       } catch (error) {
         console.error('Error fetching user:', error);
@@ -65,7 +54,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(false);
       }
     };
-
+  
     fetchUser();
   }, []);
 
