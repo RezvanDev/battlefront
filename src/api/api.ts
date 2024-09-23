@@ -31,15 +31,21 @@ export const spinWheel = async (telegramId: string, lobbyCode: string, bet: numb
 };
 
 export const getBalance = async (telegramId: string) => {
+  const url = `/users/${telegramId}/balance`;
+  console.log(`Запрос баланса для пользователя ${telegramId}. URL: ${API_URL}${url}`);
+  
   try {
-    const response = await api.get(`/users/${telegramId}/balance`);
+    const response = await api.get(url);
+    console.log('Ответ сервера:', response.data);
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      console.error('Error fetching balance:', error.response?.data || error.message);
+      console.error('Ошибка при загрузке баланса:', error.response?.data || error.message);
+      console.error('Статус ошибки:', error.response?.status);
+      console.error('Заголовки ответа:', error.response?.headers);
       return { success: false, error: error.response?.data?.error || 'Ошибка при загрузке баланса' };
     }
-    console.error('Unexpected error:', error);
+    console.error('Неожиданная ошибка:', error);
     return { success: false, error: 'Неизвестная ошибка' };
   }
 };

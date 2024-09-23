@@ -19,17 +19,22 @@ const Home: React.FC<HomeProps> = ({ onDeposit }) => {
   useEffect(() => {
     const fetchBalance = async () => {
       if (user?.id) {
+        console.log('Запрос баланса для пользователя:', user.id);
         try {
           const data = await getBalance(user.id.toString());
+          console.log('Полученные данные:', data);
           if (data.success) {
             setBalance(data.balance);
           } else {
             setError(data.error || 'Не удалось загрузить баланс');
           }
         } catch (error) {
-          console.error('Error fetching balance:', error);
+          console.error('Ошибка при загрузке баланса:', error);
           setError('Ошибка при загрузке баланса');
         }
+      } else {
+        console.error('ID пользователя отсутствует');
+        setError('ID пользователя не найден');
       }
     };
 
@@ -59,7 +64,7 @@ const Home: React.FC<HomeProps> = ({ onDeposit }) => {
           <div>
             <div className="text-sm text-gray-400">Баланс</div>
             <div className="text-xl font-bold">
-              {error ? 'Ошибка загрузки' : `${formatBalance(balance)}$`}
+              {error ? `Ошибка: ${error}` : (balance === null ? 'Загрузка...' : `${formatBalance(balance)}$`)}
             </div>
           </div>
         </div>
