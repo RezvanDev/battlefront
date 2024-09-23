@@ -11,6 +11,11 @@ const api = axios.create({
   withCredentials: true,
 });
 
+export const chooseColor = async (telegramId: string, lobbyCode: string, selectedColor: 'red' | 'black') => {
+  const response = await api.post(`/game/${telegramId}/${lobbyCode}/choose-color`, { selectedColor });
+  return response.data;
+};
+
 export const createGame = async (telegramId: string, bet: number) => {
   const response = await api.post(`/game/${telegramId}/create`, { bet });
   return response.data;
