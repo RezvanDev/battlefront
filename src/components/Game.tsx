@@ -27,6 +27,9 @@ const Game: React.FC = () => {
       if (lobbyCode) {
         const data = await getGameStatus(lobbyCode);
         setGameStatus(data.game);
+        if (data.game.status === 'FINISHED') {
+          // Здесь можно добавить логику завершения игры
+        }
       }
     };
     fetchGameStatus();
@@ -46,12 +49,12 @@ const Game: React.FC = () => {
         });
       }, 100);
     } else {
-      if (timeIntervalRef.current) {
+      if (timeIntervalRef.current !== null) {
         clearInterval(timeIntervalRef.current);
       }
     }
     return () => {
-      if (timeIntervalRef.current) {
+      if (timeIntervalRef.current !== null) {
         clearInterval(timeIntervalRef.current);
       }
     };
@@ -94,7 +97,7 @@ const Game: React.FC = () => {
   };
 
   const handleStop = (isWin?: boolean, finalAngle?: number, finalColor?: 'red' | 'black') => {
-    if (spinIntervalRef.current) {
+    if (spinIntervalRef.current !== null) {
       clearInterval(spinIntervalRef.current);
     }
     setIsSpinning(false);
@@ -137,7 +140,6 @@ const Game: React.FC = () => {
   }
 
   const isCreator = user && user.id === gameStatus.creator.id;
-  const isPlayerTurn = (isCreator && gameStatus.currentTurn === 'CREATOR') || (!isCreator && gameStatus.currentTurn === 'PARTICIPANT');
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-b from-gray-900 to-black text-white p-4">
@@ -167,24 +169,30 @@ const Game: React.FC = () => {
         </div>
       </div>
 
-      {isPlayerTurn && !selectedColor && (
+      {gameStatus.status === 'COLOR_SELECTION' && (
         <div className="flex justify-center space-x-4 mt-4">
           <button
-            className="w-1/2 py-4 bg-red-600 rounded-xl"
+            className={`w-1/2 py-4 rounded-xl ${
+              selectedColor === 'red' ? 'bg-red-600' : 'bg-red-800'
+            } ${selectedColor ? 'opacity-50 cursor-not-allowed' : ''}`}
             onClick={() => handleColorSelect('red')}
+            disabled={selectedColor !== null}
           >
             Красный
           </button>
           <button
-            className="w-1/2 py-4 bg-gray-800 rounded-xl"
+            className={`w-1/2 py-4 rounded-xl ${
+              selectedColor === 'black' ? 'bg-gray-800' : 'bg-gray-600'
+            } ${selectedColor ? 'opacity-50 cursor-not-allowed' : ''}`}
             onClick={() => handleColorSelect('black')}
+            disabled={selectedColor !== null}
           >
             Черный
           </button>
         </div>
       )}
 
-      {selectedColor && !isSpinning && isPlayerTurn && (
+      {gameStatus.status === 'READY_TO_SPIN' && !isSpinning && (
         <button
           className="w-full py-4 bg-blue-600 rounded-xl mt-4"
           onClick={handleSpin}
@@ -208,9 +216,29 @@ const Game: React.FC = () => {
         </div>
       )}
 
-      {!isPlayerTurn && (
+      {gameStatus.status === 'WAITING' && (
         <div className="text-center mt-4">
-          <p className="text-xl">Ожидание хода другого игрока...</p>
+          <p className="text-xl">Ожидание второго игрока...</p>
+        </div>
+      )}
+
+      {gameStatus.status === 'FINISHED' && (
+        <div className="text-center mt-4">
+          <p className="text-2xl font-bold">Игра завершена</p>
+          <p className="text-xl mt-2">
+            Итоговый результат:
+            {isCreator
+              ? `Вы ${gameStatus.creatorWins > gameStatus.participantWins ? 'выиграли' : 'проиграли'}`
+              : `Вы ${gameStatus.participantWins > gameStatus.creatorWins ? 'выиграли' : 'проиграли'}`}
+          </p>
+          <p className="text-lg mt-1">
+            Счет: {gameStatus.creatorWins} : {gameStatus.participantWins}
+          </p>
+          <p className="text-lg mt-1">
+            {isCreator
+              ? `Ваш выигрыш: ${gameStatus.creatorTotalWin}$`
+              : `Ваш выигрыш: ${gameStatus.participantTotalWin}$`}
+          </p>
         </div>
       )}
     </div>
