@@ -26,8 +26,8 @@ export const getGameStatus = async (lobbyCode: string) => {
   return response.data;
 };
 
-export const spinWheel = async (telegramId: string, lobbyCode: string, bet: number) => {
-  const response = await api.post(`/game/${telegramId}/${lobbyCode}/spin`, { bet });
+export const spinWheel = async (telegramId: string, lobbyCode: string, selectedColor: 'red' | 'black') => {
+  const response = await api.post(`/game/${telegramId}/${lobbyCode}/spin`, { selectedColor });
   return response.data;
 };
 

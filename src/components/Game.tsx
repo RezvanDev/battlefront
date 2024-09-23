@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { spinWheel, getGameStatus } from '../api/api';
+import { useTelegram } from '../context/TelegramContext';
 
 const SEGMENTS = 50;
 const SEGMENT_DEGREE = 360 / SEGMENTS;
@@ -21,6 +22,7 @@ const Game: React.FC = () => {
 
   const { lobbyCode } = useParams<{ lobbyCode: string }>();
   const navigate = useNavigate();
+  const { user } = useTelegram();
 
   const spinIntervalRef = useRef<number | null>(null);
   const timeIntervalRef = useRef<number | null>(null);
@@ -32,7 +34,11 @@ const Game: React.FC = () => {
         const data = await getGameStatus(lobbyCode);
         setGameStatus(data.game.status);
         setBet(data.game.bet);
-        setBalance(data.game.creator.balance);
+        if (user && user.id === data.game.creator.id) {
+          setBalance(data.game.creator.balance);
+        } else if (user && data.game.participant && user.id === data.game.participant.id) {
+          setBalance(data.game.participant.balance);
+        }
       } catch (error) {
         console.error('Error fetching game status:', error);
       }
@@ -42,7 +48,7 @@ const Game: React.FC = () => {
     const interval = setInterval(fetchGameStatus, 5000);
 
     return () => clearInterval(interval);
-  }, [lobbyCode]);
+  }, [lobbyCode, user]);
 
   useEffect(() => {
     if (showRoundInfo) {
@@ -58,7 +64,7 @@ const Game: React.FC = () => {
       timeIntervalRef.current = window.setInterval(() => {
         setTimeLeft((prevTime) => {
           if (prevTime <= 0) {
-            handleStop(false, rotationAngle);
+            handleStop(false, rotationAngle, playerColor || 'red');
             return 0;
           }
           return prevTime - 100;
@@ -74,7 +80,7 @@ const Game: React.FC = () => {
         clearInterval(timeIntervalRef.current);
       }
     };
-  }, [isSpinning, rotationAngle]);
+  }, [isSpinning, rotationAngle, playerColor]);
 
   const handleColorSelect = async (color: 'red' | 'black') => {
     setPlayerColor(color);
@@ -82,18 +88,17 @@ const Game: React.FC = () => {
     setTimeLeft(TIME_LIMIT);
 
     try {
-      const telegramId = localStorage.getItem('telegramId');
-      if (!telegramId || !lobbyCode) {
-        console.error('TelegramId или lobbyCode не найден');
+      if (!user || !user.id || !lobbyCode) {
+        console.error('User ID или lobbyCode не найден');
         return;
       }
-      const data = await spinWheel(telegramId, lobbyCode, bet);
-      const { isWin, angle, newBalance } = data.result;
+      const data = await spinWheel(user.id.toString(), lobbyCode, color);
+      const { isWin, angle, newBalance, wheelColor } = data.result;
 
       let currentAngle = rotationAngle;
       spinIntervalRef.current = window.setInterval(() => {
         if (currentAngle >= angle) {
-          handleStop(isWin, angle);
+          handleStop(isWin, angle, wheelColor);
         } else {
           currentAngle += 10;
           setRotationAngle(currentAngle % 360);
@@ -107,17 +112,13 @@ const Game: React.FC = () => {
     }
   };
 
-  const handleStop = (isWin: boolean, finalAngle: number) => {
+  const handleStop = (isWin: boolean, finalAngle: number, finalColor: 'red' | 'black') => {
     if (spinIntervalRef.current) {
       clearInterval(spinIntervalRef.current);
     }
     setIsSpinning(false);
     
     setRotationAngle(finalAngle);
-    const segment = Math.floor(finalAngle / SEGMENT_DEGREE);
-    const isRed = segment % 2 === 0;
-    const finalColor = isRed ? 'red' : 'black';
-    
     setLandedColor(finalColor);
     setResult(isWin ? 'win' : 'lose');
   };
