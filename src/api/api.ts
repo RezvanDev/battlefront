@@ -11,15 +11,14 @@ const api = axios.create({
   withCredentials: true,
 });
 
+export const chooseColor = async (telegramId: string, lobbyCode: string, selectedColor: 'red' | 'black') => {
+  const response = await api.post(`/game/${telegramId}/${lobbyCode}/choose-color`, { selectedColor });
+  return response.data;
+};
+
 export const createGame = async (telegramId: string, bet: number) => {
-  try {
-    const response = await api.post(`/game/${telegramId}/create`, { bet });
-    console.log('Игра создана:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('Ошибка при создании игры:', error);
-    throw error;
-  }
+  const response = await api.post(`/game/${telegramId}/create`, { bet });
+  return response.data;
 };
 
 export const joinGame = async (telegramId: string, lobbyCode: string) => {
@@ -34,37 +33,14 @@ export const joinGame = async (telegramId: string, lobbyCode: string) => {
   }
 };
 
-export const chooseColor = async (telegramId: string, lobbyCode: string, selectedColor: 'red' | 'black') => {
-  try {
-    const response = await api.post(`/game/${telegramId}/${lobbyCode}/choose-color`, { selectedColor });
-    console.log('Цвет выбран:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('Ошибка при выборе цвета:', error);
-    throw error;
-  }
+export const getGameStatus = async (lobbyCode: string) => {
+  const response = await api.get(`/game/${lobbyCode}/status`);
+  return response.data;
 };
 
 export const spinWheel = async (telegramId: string, lobbyCode: string) => {
-  try {
-    const response = await api.post(`/game/${telegramId}/${lobbyCode}/spin`);
-    console.log('Колесо провернуто:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('Ошибка при вращении колеса:', error);
-    throw error;
-  }
-};
-
-export const getGameStatus = async (lobbyCode: string) => {
-  try {
-    const response = await api.get(`/game/${lobbyCode}/status`);
-    console.log('Статус игры получен:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('Ошибка при получении статуса игры:', error);
-    throw error;
-  }
+  const response = await api.post(`/game/${telegramId}/${lobbyCode}/spin`);
+  return response.data;
 };
 
 export const getBalance = async (telegramId: string) => {
@@ -91,16 +67,10 @@ export const getBalance = async (telegramId: string) => {
 };
 
 export const updateBalance = async (telegramId: string, amount: number, operation: 'add' | 'subtract') => {
-  try {
-    const response = await api.post(`/users/${telegramId}/balance`, null, {
-      params: { amount, operation }
-    });
-    console.log('Баланс обновлен:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('Ошибка при обновлении баланса:', error);
-    throw error;
-  }
+  const response = await api.post(`/users/${telegramId}/balance`, null, {
+    params: { amount, operation }
+  });
+  return response.data;
 };
 
 export default api;

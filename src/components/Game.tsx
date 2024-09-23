@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { spinWheel, getGameStatus, chooseColor } from '../api/api';
 import { useTelegram } from '../context/TelegramContext';
 
@@ -18,7 +18,6 @@ const Game: React.FC = () => {
 
   const { lobbyCode } = useParams<{ lobbyCode: string }>();
   const { user } = useTelegram();
-  const navigate = useNavigate();
 
   const spinIntervalRef = useRef<number | null>(null);
   const timeIntervalRef = useRef<number | null>(null);
@@ -26,15 +25,8 @@ const Game: React.FC = () => {
   useEffect(() => {
     const fetchGameStatus = async () => {
       if (lobbyCode) {
-        try {
-          const data = await getGameStatus(lobbyCode);
-          setGameStatus(data.game);
-          if (data.game.status === 'FINISHED') {
-            // Здесь можно добавить логику завершения игры
-          }
-        } catch (error) {
-          console.error('Error fetching game status:', error);
-        }
+        const data = await getGameStatus(lobbyCode);
+        setGameStatus(data.game);
       }
     };
     fetchGameStatus();
@@ -54,12 +46,12 @@ const Game: React.FC = () => {
         });
       }, 100);
     } else {
-      if (timeIntervalRef.current !== null) {
+      if (timeIntervalRef.current) {
         clearInterval(timeIntervalRef.current);
       }
     }
     return () => {
-      if (timeIntervalRef.current !== null) {
+      if (timeIntervalRef.current) {
         clearInterval(timeIntervalRef.current);
       }
     };
@@ -71,11 +63,7 @@ const Game: React.FC = () => {
       return;
     }
     setSelectedColor(color);
-    try {
-      await chooseColor(user.id.toString(), lobbyCode, color);
-    } catch (error) {
-      console.error('Error choosing color:', error);
-    }
+    await chooseColor(user.id.toString(), lobbyCode, color);
   };
 
   const handleSpin = async () => {
@@ -106,7 +94,7 @@ const Game: React.FC = () => {
   };
 
   const handleStop = (isWin?: boolean, finalAngle?: number, finalColor?: 'red' | 'black') => {
-    if (spinIntervalRef.current !== null) {
+    if (spinIntervalRef.current) {
       clearInterval(spinIntervalRef.current);
     }
     setIsSpinning(false);
@@ -149,10 +137,7 @@ const Game: React.FC = () => {
   }
 
   const isCreator = user && user.id === gameStatus.creator.id;
-  const canSelectColor = gameStatus.status === 'COLOR_SELECTION' && 
-    ((isCreator && !gameStatus.creatorColor) || (!isCreator && !gameStatus.participantColor));
-  const canSpin = gameStatus.status === 'READY_TO_SPIN' && 
-    ((isCreator && gameStatus.currentTurn === 'CREATOR') || (!isCreator && gameStatus.currentTurn === 'PARTICIPANT'));
+  const isPlayerTurn = (isCreator && gameStatus.currentTurn === 'CREATOR') || (!isCreator && gameStatus.currentTurn === 'PARTICIPANT');
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-b from-gray-900 to-black text-white p-4">
@@ -182,7 +167,7 @@ const Game: React.FC = () => {
         </div>
       </div>
 
-      {canSelectColor && (
+      {isPlayerTurn && !selectedColor && (
         <div className="flex justify-center space-x-4 mt-4">
           <button
             className="w-1/2 py-4 bg-red-600 rounded-xl"
@@ -199,7 +184,7 @@ const Game: React.FC = () => {
         </div>
       )}
 
-      {canSpin && !isSpinning && (
+      {selectedColor && !isSpinning && isPlayerTurn && (
         <button
           className="w-full py-4 bg-blue-600 rounded-xl mt-4"
           onClick={handleSpin}
@@ -223,39 +208,7 @@ const Game: React.FC = () => {
         </div>
       )}
 
-      {gameStatus.status === 'WAITING' && (
-        <div className="text-center mt-4">
-          <p className="text-xl">Ожидание второго игрока...</p>
-        </div>
-      )}
-
-      {gameStatus.status === 'FINISHED' && (
-        <div className="text-center mt-4">
-          <p className="text-2xl font-bold">Игра завершена</p>
-          <p className="text-xl mt-2">
-            Итоговый результат:
-            {isCreator
-              ? `Вы ${gameStatus.creatorWins > gameStatus.participantWins ? 'выиграли' : 'проиграли'}`
-              : `Вы ${gameStatus.participantWins > gameStatus.creatorWins ? 'выиграли' : 'проиграли'}`}
-          </p>
-          <p className="text-lg mt-1">
-            Счет: {gameStatus.creatorWins} : {gameStatus.participantWins}
-          </p>
-          <p className="text-lg mt-1">
-            {isCreator
-              ? `Ваш выигрыш: ${gameStatus.creatorTotalWin}$`
-              : `Ваш выигрыш: ${gameStatus.participantTotalWin}$`}
-          </p>
-          <button
-            className="w-full py-4 bg-green-600 rounded-xl mt-4"
-            onClick={() => navigate('/')}
-          >
-            Вернуться в лобби
-          </button>
-        </div>
-      )}
-
-      {!canSelectColor && !canSpin && gameStatus.status !== 'WAITING' && gameStatus.status !== 'FINISHED' && (
+      {!isPlayerTurn && (
         <div className="text-center mt-4">
           <p className="text-xl">Ожидание хода другого игрока...</p>
         </div>
