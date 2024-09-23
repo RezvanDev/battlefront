@@ -1,4 +1,3 @@
-// src/components/WaitingRoom.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getGameStatus } from '../api/api';
@@ -30,7 +29,6 @@ const WaitingRoom: React.FC = () => {
       const gameTimer = setTimeout(() => {
         navigate(`/game/${lobbyCode}`);
       }, 2000);
-
       return () => clearTimeout(gameTimer);
     }
   }, [isAccepted, navigate, lobbyCode]);
