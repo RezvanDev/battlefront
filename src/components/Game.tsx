@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { spinWheel, getGameStatus, chooseColor } from '../api/api';
 import { useTelegram } from '../context/TelegramContext';
 
@@ -18,6 +18,7 @@ const Game: React.FC = () => {
 
   const { lobbyCode } = useParams<{ lobbyCode: string }>();
   const { user } = useTelegram();
+  const navigate = useNavigate();
 
   const spinIntervalRef = useRef<number | null>(null);
   const timeIntervalRef = useRef<number | null>(null);
@@ -25,10 +26,14 @@ const Game: React.FC = () => {
   useEffect(() => {
     const fetchGameStatus = async () => {
       if (lobbyCode) {
-        const data = await getGameStatus(lobbyCode);
-        setGameStatus(data.game);
-        if (data.game.status === 'FINISHED') {
-          // Здесь можно добавить логику завершения игры
+        try {
+          const data = await getGameStatus(lobbyCode);
+          setGameStatus(data.game);
+          if (data.game.status === 'FINISHED') {
+            // Здесь можно добавить логику завершения игры
+          }
+        } catch (error) {
+          console.error('Error fetching game status:', error);
         }
       }
     };
@@ -66,7 +71,11 @@ const Game: React.FC = () => {
       return;
     }
     setSelectedColor(color);
-    await chooseColor(user.id.toString(), lobbyCode, color);
+    try {
+      await chooseColor(user.id.toString(), lobbyCode, color);
+    } catch (error) {
+      console.error('Error choosing color:', error);
+    }
   };
 
   const handleSpin = async () => {
@@ -140,6 +149,10 @@ const Game: React.FC = () => {
   }
 
   const isCreator = user && user.id === gameStatus.creator.id;
+  const canSelectColor = gameStatus.status === 'COLOR_SELECTION' && 
+    ((isCreator && !gameStatus.creatorColor) || (!isCreator && !gameStatus.participantColor));
+  const canSpin = gameStatus.status === 'READY_TO_SPIN' && 
+    ((isCreator && gameStatus.currentTurn === 'CREATOR') || (!isCreator && gameStatus.currentTurn === 'PARTICIPANT'));
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-b from-gray-900 to-black text-white p-4">
@@ -169,30 +182,24 @@ const Game: React.FC = () => {
         </div>
       </div>
 
-      {gameStatus.status === 'COLOR_SELECTION' && (
+      {canSelectColor && (
         <div className="flex justify-center space-x-4 mt-4">
           <button
-            className={`w-1/2 py-4 rounded-xl ${
-              selectedColor === 'red' ? 'bg-red-600' : 'bg-red-800'
-            } ${selectedColor ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className="w-1/2 py-4 bg-red-600 rounded-xl"
             onClick={() => handleColorSelect('red')}
-            disabled={selectedColor !== null}
           >
             Красный
           </button>
           <button
-            className={`w-1/2 py-4 rounded-xl ${
-              selectedColor === 'black' ? 'bg-gray-800' : 'bg-gray-600'
-            } ${selectedColor ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className="w-1/2 py-4 bg-gray-800 rounded-xl"
             onClick={() => handleColorSelect('black')}
-            disabled={selectedColor !== null}
           >
             Черный
           </button>
         </div>
       )}
 
-      {gameStatus.status === 'READY_TO_SPIN' && !isSpinning && (
+      {canSpin && !isSpinning && (
         <button
           className="w-full py-4 bg-blue-600 rounded-xl mt-4"
           onClick={handleSpin}
@@ -239,6 +246,18 @@ const Game: React.FC = () => {
               ? `Ваш выигрыш: ${gameStatus.creatorTotalWin}$`
               : `Ваш выигрыш: ${gameStatus.participantTotalWin}$`}
           </p>
+          <button
+            className="w-full py-4 bg-green-600 rounded-xl mt-4"
+            onClick={() => navigate('/')}
+          >
+            Вернуться в лобби
+          </button>
+        </div>
+      )}
+
+      {!canSelectColor && !canSpin && gameStatus.status !== 'WAITING' && gameStatus.status !== 'FINISHED' && (
+        <div className="text-center mt-4">
+          <p className="text-xl">Ожидание хода другого игрока...</p>
         </div>
       )}
     </div>
