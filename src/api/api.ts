@@ -38,8 +38,8 @@ export const getGameStatus = async (lobbyCode: string) => {
   return response.data;
 };
 
-export const spinWheel = async (telegramId: string, lobbyCode: string, selectedColor: 'red' | 'black') => {
-  const response = await api.post(`/game/${telegramId}/${lobbyCode}/spin`, { selectedColor });
+export const spinWheel = async (telegramId: string, lobbyCode: string) => {
+  const response = await api.post(`/game/${telegramId}/${lobbyCode}/spin`);
   return response.data;
 };
 
