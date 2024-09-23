@@ -17,8 +17,7 @@ const JoinGame: React.FC = () => {
       }
       const data = await joinGame(telegramId, lobbyCode);
       if (data.success) {
-        // Сразу перенаправляем на страницу игры, так как теперь нет ожидания
-        navigate(`/game/${lobbyCode}`);
+        navigate(`/waiting-room/${lobbyCode}`);
       } else {
         console.error('Ошибка при присоединении к игре:', data.error);
         alert(data.error || 'Неверный код лобби');

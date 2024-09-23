@@ -17,8 +17,15 @@ export const createGame = async (telegramId: string, bet: number) => {
 };
 
 export const joinGame = async (telegramId: string, lobbyCode: string) => {
-  const response = await api.post(`/game/${telegramId}/join`, { lobbyCode });
-  return response.data;
+  console.log(`Попытка присоединиться к игре. TelegramId: ${telegramId}, LobbyCode: ${lobbyCode}`);
+  try {
+    const response = await api.post(`/game/${telegramId}/join`, { lobbyCode });
+    console.log('Ответ сервера при присоединении к игре:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Ошибка при присоединении к игре:', error);
+    throw error;
+  }
 };
 
 export const getGameStatus = async (lobbyCode: string) => {
