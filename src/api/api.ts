@@ -1,13 +1,14 @@
-// src/api/api.ts
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://3591-202-79-184-241.ngrok-free.app/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://da05-185-213-230-172.ngrok-free.app/api';
 
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
   },
+  withCredentials: true,
 });
 
 export const createGame = async (telegramId: string, bet: number) => {
@@ -43,12 +44,10 @@ export const getBalance = async (telegramId: string) => {
       console.error('Ошибка при загрузке баланса:', error.response?.data || error.message);
       console.error('Статус ошибки:', error.response?.status);
       console.error('Заголовки ответа:', error.response?.headers);
-      console.error('Полный ответ:', error.response);
       return { 
         success: false, 
         error: error.response?.data?.error || 'Ошибка при загрузке баланса',
         status: error.response?.status,
-        data: error.response?.data
       };
     }
     console.error('Неожиданная ошибка:', error);
