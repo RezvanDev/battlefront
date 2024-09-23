@@ -9,10 +9,10 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use((config) => {
   const initData = window.Telegram?.WebApp?.initData;
+  console.log('Sending initData:', initData); // Добавьте эту строку
   if (initData) {
     config.headers['X-Telegram-Init-Data'] = initData;
   }
   return config;
 });
-
 export default apiClient;
