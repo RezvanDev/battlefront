@@ -11,7 +11,7 @@ interface HomeProps {
 }
 
 const Home: React.FC<HomeProps> = ({ onDeposit }) => {
-  const [balance, setBalance] = useState(0);
+  const [balance, setBalance] = useState<number | null>(null);
   const navigate = useNavigate();
   const { user } = useTelegram();
 
@@ -23,11 +23,17 @@ const Home: React.FC<HomeProps> = ({ onDeposit }) => {
           setBalance(data.balance);
         } catch (error) {
           console.error('Error fetching balance:', error);
+          setBalance(null);
         }
       }
     };
     fetchBalance();
   }, [user]);
+
+  const formatBalance = (balance: number | null) => {
+    if (balance === null) return 'Загрузка...';
+    return balance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  };
 
   return (
     <div className="relative flex flex-col h-screen bg-gradient-to-b from-gray-900 to-black text-white p-4">
@@ -36,7 +42,7 @@ const Home: React.FC<HomeProps> = ({ onDeposit }) => {
           <img src={duckImage} alt="Profile" className="w-12 h-12 rounded-full mr-3" />
           <div>
             <div className="text-sm text-gray-400">Баланс</div>
-            <div className="text-xl font-bold">{balance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}$</div>
+            <div className="text-xl font-bold">{formatBalance(balance)}$</div>
           </div>
         </div>
         <button
