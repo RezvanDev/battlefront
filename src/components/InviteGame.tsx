@@ -1,22 +1,22 @@
-// src/components/InviteGame.tsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createGame, getBalance } from '../api/api';
+import { useTelegram } from '../context/TelegramContext';
 
 const InviteGame: React.FC = () => {
   const [inviteLink, setInviteLink] = useState('');
   const [lobbyCode, setLobbyCode] = useState('');
-  const [bet, setBet] = useState(10); // Минимальная ставка по умолчанию
+  const [bet, setBet] = useState(10);
   const [balance, setBalance] = useState(0);
   const [isCreatingGame, setIsCreatingGame] = useState(false);
   const navigate = useNavigate();
+  const { user } = useTelegram();
 
   useEffect(() => {
     const fetchBalance = async () => {
-      const telegramId = localStorage.getItem('telegramId');
-      if (telegramId) {
+      if (user && user.id) {
         try {
-          const data = await getBalance(telegramId);
+          const data = await getBalance(user.id.toString());
           setBalance(data.balance);
         } catch (error) {
           console.error('Error fetching balance:', error);
@@ -24,19 +24,18 @@ const InviteGame: React.FC = () => {
       }
     };
     fetchBalance();
-  }, []);
+  }, [user]);
 
   const initGame = async () => {
     setIsCreatingGame(true);
     try {
-      const telegramId = localStorage.getItem('telegramId');
-      if (!telegramId) {
-        console.error('TelegramId не найден');
-        return;
+      if (user && user.id) {
+        const data = await createGame(user.id.toString(), bet);
+        setLobbyCode(data.lobbyCode);
+        setInviteLink(`${window.location.origin}/join-game/${data.lobbyCode}`);
+      } else {
+        console.error('User ID not found');
       }
-      const data = await createGame(telegramId, bet);
-      setLobbyCode(data.lobbyCode);
-      setInviteLink(`${window.location.origin}/join-game/${data.lobbyCode}`);
     } catch (error) {
       console.error('Ошибка при создании игры:', error);
     } finally {

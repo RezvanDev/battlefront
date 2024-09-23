@@ -1,25 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getBalance } from '../api/api';
+import { useTelegram } from '../context/TelegramContext';
 import duckImage from '../img/1.png';
 import dogImage from '../img/2.png';
 import GameImage from '../img/Vector.png';
 
 interface HomeProps {
-  initialBalance?: number;
   onDeposit: () => void;
 }
 
-const Home: React.FC<HomeProps> = ({ initialBalance = 0, onDeposit }) => {
-  const [balance, setBalance] = useState(initialBalance);
+const Home: React.FC<HomeProps> = ({ onDeposit }) => {
+  const [balance, setBalance] = useState(0);
   const navigate = useNavigate();
+  const { user } = useTelegram();
 
   useEffect(() => {
     const fetchBalance = async () => {
-      const telegramId = localStorage.getItem('telegramId');
-      if (telegramId) {
+      if (user && user.id) {
         try {
-          const data = await getBalance(telegramId);
+          const data = await getBalance(user.id.toString());
           setBalance(data.balance);
         } catch (error) {
           console.error('Error fetching balance:', error);
@@ -27,7 +27,7 @@ const Home: React.FC<HomeProps> = ({ initialBalance = 0, onDeposit }) => {
       }
     };
     fetchBalance();
-  }, []);
+  }, [user]);
 
   return (
     <div className="relative flex flex-col h-screen bg-gradient-to-b from-gray-900 to-black text-white p-4">
