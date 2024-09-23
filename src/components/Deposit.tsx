@@ -44,7 +44,7 @@ const Deposit: React.FC = () => {
           </button>
         ))}
         <button
-          onClick={() => {/* Логика для выбора другого токена */}}
+          onClick={() => {}}
           className="w-full bg-gray-800 text-white py-4 rounded-2xl text-lg font-medium flex items-center justify-between px-4"
         >
           <span className="flex items-center">
