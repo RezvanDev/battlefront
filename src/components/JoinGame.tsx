@@ -1,7 +1,7 @@
-// src/components/JoinGame.tsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { joinGame } from '../api/api';
+import axios from 'axios';
 
 const JoinGame: React.FC = () => {
   const [lobbyCode, setLobbyCode] = useState('');
@@ -12,17 +12,24 @@ const JoinGame: React.FC = () => {
       const telegramId = localStorage.getItem('telegramId');
       if (!telegramId) {
         console.error('TelegramId не найден');
+        alert('TelegramId не найден. Пожалуйста, авторизуйтесь заново.');
         return;
       }
       const data = await joinGame(telegramId, lobbyCode);
       if (data.success) {
         navigate(`/waiting-room/${lobbyCode}`);
       } else {
+        console.error('Ошибка при присоединении к игре:', data.error);
         alert(data.error || 'Неверный код лобби');
       }
     } catch (error) {
       console.error('Ошибка при присоединении к игре:', error);
-      alert('Произошла ошибка при присоединении к игре');
+      if (axios.isAxiosError(error) && error.response) {
+        console.error('Ответ сервера:', error.response.data);
+        alert(`Ошибка: ${error.response.data.error || 'Неизвестная ошибка'}`);
+      } else {
+        alert('Произошла неизвестная ошибка при присоединении к игре');
+      }
     }
   };
 

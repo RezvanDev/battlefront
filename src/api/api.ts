@@ -12,13 +12,20 @@ const api = axios.create({
 });
 
 export const createGame = async (telegramId: string, bet: number) => {
-    const response = await api.post(`/game/${telegramId}/create`, { bet });
-    return response.data;
-  };
+  const response = await api.post(`/game/${telegramId}/create`, { bet });
+  return response.data;
+};
 
 export const joinGame = async (telegramId: string, lobbyCode: string) => {
-  const response = await api.post(`/game/${telegramId}/join`, { lobbyCode });
-  return response.data;
+  console.log(`Попытка присоединиться к игре. TelegramId: ${telegramId}, LobbyCode: ${lobbyCode}`);
+  try {
+    const response = await api.post(`/game/${telegramId}/join`, { lobbyCode });
+    console.log('Ответ сервера при присоединении к игре:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Ошибка при присоединении к игре:', error);
+    throw error;
+  }
 };
 
 export const getGameStatus = async (lobbyCode: string) => {
@@ -34,7 +41,6 @@ export const spinWheel = async (telegramId: string, lobbyCode: string, selectedC
 export const getBalance = async (telegramId: string) => {
   const url = `/users/${telegramId}/balance`;
   console.log(`Запрос баланса для пользователя ${telegramId}. URL: ${API_URL}${url}`);
-  
   try {
     const response = await api.get(url);
     console.log('Ответ сервера:', response.data);
@@ -44,8 +50,8 @@ export const getBalance = async (telegramId: string) => {
       console.error('Ошибка при загрузке баланса:', error.response?.data || error.message);
       console.error('Статус ошибки:', error.response?.status);
       console.error('Заголовки ответа:', error.response?.headers);
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: error.response?.data?.error || 'Ошибка при загрузке баланса',
         status: error.response?.status,
       };
