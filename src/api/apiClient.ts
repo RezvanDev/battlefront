@@ -8,9 +8,9 @@ const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  const initData = window.Telegram?.WebApp?.initData;
+  if (initData) {
+    config.headers['X-Telegram-Init-Data'] = initData;
   }
   return config;
 });

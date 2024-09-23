@@ -24,6 +24,14 @@ declare global {
     Telegram: {
       WebApp: {
         initData: string;
+        initDataUnsafe: {
+          user?: {
+            id: number;
+            first_name: string;
+            last_name?: string;
+            username?: string;
+          };
+        };
       };
     };
   }
@@ -38,11 +46,17 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const fetchUser = async () => {
       try {
         const initData = window.Telegram?.WebApp?.initData;
-        if (!initData) {
-          throw new Error('Telegram WebApp initData not found');
+        const initDataUnsafe = window.Telegram?.WebApp?.initDataUnsafe;
+        
+        if (!initData || !initDataUnsafe.user) {
+          throw new Error('Telegram WebApp data not found');
         }
 
-        const response = await apiClient.post('/auth/telegram', { initData });
+        const response = await apiClient.post('/auth/telegram', { 
+          initData,
+          user: initDataUnsafe.user
+        });
+
         setUser(response.data);
       } catch (error) {
         console.error('Error fetching user:', error);
