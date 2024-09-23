@@ -12,6 +12,7 @@ interface HomeProps {
 
 const Home: React.FC<HomeProps> = ({ onDeposit }) => {
   const [balance, setBalance] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { user, isLoading } = useTelegram();
 
@@ -20,10 +21,14 @@ const Home: React.FC<HomeProps> = ({ onDeposit }) => {
       if (user?.id) {
         try {
           const data = await getBalance(user.id.toString());
-          setBalance(data.balance);
+          if (data.success) {
+            setBalance(data.balance);
+          } else {
+            setError(data.error || 'Не удалось загрузить баланс');
+          }
         } catch (error) {
           console.error('Error fetching balance:', error);
-          setBalance(null);
+          setError('Ошибка при загрузке баланса');
         }
       }
     };
@@ -53,7 +58,9 @@ const Home: React.FC<HomeProps> = ({ onDeposit }) => {
           <img src={duckImage} alt="Profile" className="w-12 h-12 rounded-full mr-3" />
           <div>
             <div className="text-sm text-gray-400">Баланс</div>
-            <div className="text-xl font-bold">{formatBalance(balance)}$</div>
+            <div className="text-xl font-bold">
+              {error ? 'Ошибка загрузки' : `${formatBalance(balance)}$`}
+            </div>
           </div>
         </div>
         <button

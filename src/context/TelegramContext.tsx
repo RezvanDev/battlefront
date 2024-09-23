@@ -30,16 +30,25 @@ export const TelegramProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           });
         } else {
           console.warn('Telegram user data not available');
+          // Используем mock-данные, если реальные данные недоступны
+          setUser({
+            id: 12345,
+            username: 'johndoe'
+          });
         }
       } else {
         console.warn('Telegram WebApp not available');
+        // Используем mock-данные, если Telegram WebApp недоступен
+        setUser({
+          id: 12345,
+          username: 'johndoe'
+        });
       }
       setIsLoading(false);
     };
 
     // Попытка инициализации через 1 секунду, если Telegram WebApp не загрузился сразу
     const timeoutId = setTimeout(initTelegram, 1000);
-
     return () => clearTimeout(timeoutId);
   }, []);
 

@@ -35,8 +35,12 @@ export const getBalance = async (telegramId: string) => {
     const response = await api.get(`/users/${telegramId}/balance`);
     return response.data;
   } catch (error) {
-    console.error('Error fetching balance:', error);
-    throw error;
+    if (axios.isAxiosError(error)) {
+      console.error('Error fetching balance:', error.response?.data || error.message);
+      return { success: false, error: error.response?.data?.error || 'Ошибка при загрузке баланса' };
+    }
+    console.error('Unexpected error:', error);
+    return { success: false, error: 'Неизвестная ошибка' };
   }
 };
 
