@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { spinWheel, getGameStatus, chooseColor } from '../api/api';
 import { useTelegram } from '../context/TelegramContext';
 
@@ -17,7 +17,6 @@ const Game: React.FC = () => {
   const [landedColor, setLandedColor] = useState<'red' | 'black' | null>(null);
 
   const { lobbyCode } = useParams<{ lobbyCode: string }>();
-  const navigate = useNavigate();
   const { user } = useTelegram();
 
   const spinIntervalRef = useRef<number | null>(null);
