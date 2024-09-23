@@ -43,7 +43,13 @@ export const getBalance = async (telegramId: string) => {
       console.error('Ошибка при загрузке баланса:', error.response?.data || error.message);
       console.error('Статус ошибки:', error.response?.status);
       console.error('Заголовки ответа:', error.response?.headers);
-      return { success: false, error: error.response?.data?.error || 'Ошибка при загрузке баланса' };
+      console.error('Полный ответ:', error.response);
+      return { 
+        success: false, 
+        error: error.response?.data?.error || 'Ошибка при загрузке баланса',
+        status: error.response?.status,
+        data: error.response?.data
+      };
     }
     console.error('Неожиданная ошибка:', error);
     return { success: false, error: 'Неизвестная ошибка' };

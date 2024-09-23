@@ -26,11 +26,11 @@ const Home: React.FC<HomeProps> = ({ onDeposit }) => {
           if (data.success) {
             setBalance(data.balance);
           } else {
-            setError(data.error || 'Не удалось загрузить баланс');
+            setError(`Не удалось загрузить баланс: ${data.error}. Статус: ${data.status}`);
           }
         } catch (error) {
           console.error('Ошибка при загрузке баланса:', error);
-          setError('Ошибка при загрузке баланса');
+          setError(`Ошибка при загрузке баланса: ${error instanceof Error ? error.message : String(error)}`);
         }
       } else {
         console.error('ID пользователя отсутствует');
