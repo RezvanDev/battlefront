@@ -1,24 +1,19 @@
+// src/components/WaitingRoom.tsx
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import { useUser } from '../contexts/UserContext';
-import { joinGame } from '../api/gameService';
+import { useNavigate, useParams } from 'react-router-dom';
+import { getGameStatus } from '../api/api';
 
 const WaitingRoom: React.FC = () => {
   const [isAccepted, setIsAccepted] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
-  const params = useParams();
-  const { user } = useUser();
-
-  const gameId = (location.state as { gameId: string })?.gameId || params.gameId;
+  const { lobbyCode } = useParams<{ lobbyCode: string }>();
 
   useEffect(() => {
-    if (!user || !gameId) return;
-
     const checkGameStatus = async () => {
+      if (!lobbyCode) return;
       try {
-        const game = await joinGame(gameId, user.id);
-        if (game.status === 'READY') {
+        const data = await getGameStatus(lobbyCode);
+        if (data.game.status === 'PLAYING') {
           setIsAccepted(true);
         }
       } catch (error) {
@@ -26,18 +21,19 @@ const WaitingRoom: React.FC = () => {
       }
     };
 
-    const interval = setInterval(checkGameStatus, 5000);
+    const interval = setInterval(checkGameStatus, 5000); // Проверяем каждые 5 секунд
     return () => clearInterval(interval);
-  }, [gameId, user]);
+  }, [lobbyCode]);
 
   useEffect(() => {
     if (isAccepted) {
       const gameTimer = setTimeout(() => {
-        navigate('/game', { state: { gameId } });
+        navigate(`/game/${lobbyCode}`);
       }, 2000);
+
       return () => clearTimeout(gameTimer);
     }
-  }, [isAccepted, navigate, gameId]);
+  }, [isAccepted, navigate, lobbyCode]);
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-b from-gray-900 to-black text-white p-4 items-center justify-center">
