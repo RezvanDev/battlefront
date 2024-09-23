@@ -41,6 +41,7 @@ export const spinWheel = async (telegramId: string, lobbyCode: string, selectedC
 export const getBalance = async (telegramId: string) => {
   const url = `/users/${telegramId}/balance`;
   console.log(`Запрос баланса для пользователя ${telegramId}. URL: ${API_URL}${url}`);
+  
   try {
     const response = await api.get(url);
     console.log('Ответ сервера:', response.data);
@@ -50,8 +51,8 @@ export const getBalance = async (telegramId: string) => {
       console.error('Ошибка при загрузке баланса:', error.response?.data || error.message);
       console.error('Статус ошибки:', error.response?.status);
       console.error('Заголовки ответа:', error.response?.headers);
-      return {
-        success: false,
+      return { 
+        success: false, 
         error: error.response?.data?.error || 'Ошибка при загрузке баланса',
         status: error.response?.status,
       };
