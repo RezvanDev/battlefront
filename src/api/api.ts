@@ -11,26 +11,14 @@ const api = axios.create({
   withCredentials: true,
 });
 
-export const chooseColor = async (telegramId: string, lobbyCode: string, selectedColor: 'red' | 'black') => {
-  const response = await api.post(`/game/${telegramId}/${lobbyCode}/choose-color`, { selectedColor });
-  return response.data;
-};
-
 export const createGame = async (telegramId: string, bet: number) => {
   const response = await api.post(`/game/${telegramId}/create`, { bet });
   return response.data;
 };
 
 export const joinGame = async (telegramId: string, lobbyCode: string) => {
-  console.log(`Попытка присоединиться к игре. TelegramId: ${telegramId}, LobbyCode: ${lobbyCode}`);
-  try {
-    const response = await api.post(`/game/${telegramId}/join`, { lobbyCode });
-    console.log('Ответ сервера при присоединении к игре:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('Ошибка при присоединении к игре:', error);
-    throw error;
-  }
+  const response = await api.post(`/game/${telegramId}/join`, { lobbyCode });
+  return response.data;
 };
 
 export const getGameStatus = async (lobbyCode: string) => {
@@ -38,8 +26,8 @@ export const getGameStatus = async (lobbyCode: string) => {
   return response.data;
 };
 
-export const spinWheel = async (telegramId: string, lobbyCode: string) => {
-  const response = await api.post(`/game/${telegramId}/${lobbyCode}/spin`);
+export const spinWheel = async (telegramId: string, lobbyCode: string, selectedColor: 'red' | 'black') => {
+  const response = await api.post(`/game/${telegramId}/${lobbyCode}/spin`, { selectedColor });
   return response.data;
 };
 
