@@ -1,35 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Battle Wheel</title>
-    <!-- TODO: Раскомментировать следующую строку перед финальным деплоем в Telegram Mini App -->
-    <!-- <script src="https://telegram.org/js/telegram-web-app.js"></script> -->
-    <script type="module" crossorigin src="/assets/index-D_gSC3eh.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-wfLXuj1J.css">
-  </head>
-  <body>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script type="module" crossorigin src="/assets/index-BdWg-_P4.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-wfLXuj1J.css">
+</head>
+<body>
     <div id="root"></div>
-    <!-- TODO: Удалить следующий скрипт перед финальным деплоем в Telegram Mini App -->
     <script>
-      if (!window.Telegram) {
-        console.log('Telegram WebApp is not available, using mock implementation');
-        window.Telegram = {
-          WebApp: {
-            ready: () => {},
-            initDataUnsafe: {
-              user: {
-                id: 12345,
-                first_name: 'John',
-                last_name: 'Doe',
-                username: 'johndoe'
-              }
-            }
-          }
-        };
-      }
+        if (!window.Telegram?.WebApp) {
+            console.log('Telegram WebApp is not available, using mock implementation');
+            window.Telegram = {
+                WebApp: {
+                    ready: () => {},
+                    initDataUnsafe: {
+                        user: {
+                            id: 12345,
+                            first_name: 'John',
+                            last_name: 'Doe',
+                            username: 'johndoe'
+                        }
+                    }
+                }
+            };
+        }
     </script>
-  </body>
+</body>
 </html>

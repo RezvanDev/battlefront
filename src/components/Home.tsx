@@ -13,11 +13,11 @@ interface HomeProps {
 const Home: React.FC<HomeProps> = ({ onDeposit }) => {
   const [balance, setBalance] = useState<number | null>(null);
   const navigate = useNavigate();
-  const { user } = useTelegram();
+  const { user, isLoading } = useTelegram();
 
   useEffect(() => {
     const fetchBalance = async () => {
-      if (user && user.id) {
+      if (user?.id) {
         try {
           const data = await getBalance(user.id.toString());
           setBalance(data.balance);
@@ -27,13 +27,24 @@ const Home: React.FC<HomeProps> = ({ onDeposit }) => {
         }
       }
     };
-    fetchBalance();
-  }, [user]);
+
+    if (!isLoading && user) {
+      fetchBalance();
+    }
+  }, [user, isLoading]);
 
   const formatBalance = (balance: number | null) => {
     if (balance === null) return 'Загрузка...';
     return balance.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   };
+
+  if (isLoading) {
+    return <div>Загрузка...</div>;
+  }
+
+  if (!user) {
+    return <div>Ошибка: Не удалось получить данные пользователя</div>;
+  }
 
   return (
     <div className="relative flex flex-col h-screen bg-gradient-to-b from-gray-900 to-black text-white p-4">

@@ -31,8 +31,13 @@ export const spinWheel = async (telegramId: string, lobbyCode: string, bet: numb
 };
 
 export const getBalance = async (telegramId: string) => {
-  const response = await api.get(`/users/${telegramId}/balance`);
-  return response.data;
+  try {
+    const response = await api.get(`/users/${telegramId}/balance`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching balance:', error);
+    throw error;
+  }
 };
 
 export const updateBalance = async (telegramId: string, amount: number, operation: 'add' | 'subtract') => {

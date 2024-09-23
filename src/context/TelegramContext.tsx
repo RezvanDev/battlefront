@@ -8,6 +8,7 @@ interface TelegramUser {
 interface TelegramContextType {
   tg: any;
   user: TelegramUser | null;
+  isLoading: boolean;
 }
 
 const TelegramContext = createContext<TelegramContextType | undefined>(undefined);
@@ -15,29 +16,35 @@ const TelegramContext = createContext<TelegramContextType | undefined>(undefined
 export const TelegramProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [tg, setTg] = useState<any>(null);
   const [user, setUser] = useState<TelegramUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const telegram = (window as any).Telegram.WebApp;
-    setTg(telegram);
-    if (telegram.initDataUnsafe && telegram.initDataUnsafe.user) {
-      setUser({
-        id: telegram.initDataUnsafe.user.id,
-        username: telegram.initDataUnsafe.user.username,
-      });
-      localStorage.setItem('telegramId', telegram.initDataUnsafe.user.id.toString());
-    } else {
-      // Если мы не можем получить пользователя из Telegram, создадим временного пользователя
-      const tempId = Date.now();
-      setUser({
-        id: tempId,
-        username: 'temp_user'
-      });
-      localStorage.setItem('telegramId', tempId.toString());
-    }
+    const initTelegram = () => {
+      const telegram = (window as any).Telegram?.WebApp;
+      if (telegram) {
+        setTg(telegram);
+        if (telegram.initDataUnsafe?.user) {
+          setUser({
+            id: telegram.initDataUnsafe.user.id,
+            username: telegram.initDataUnsafe.user.username,
+          });
+        } else {
+          console.warn('Telegram user data not available');
+        }
+      } else {
+        console.warn('Telegram WebApp not available');
+      }
+      setIsLoading(false);
+    };
+
+    // Попытка инициализации через 1 секунду, если Telegram WebApp не загрузился сразу
+    const timeoutId = setTimeout(initTelegram, 1000);
+
+    return () => clearTimeout(timeoutId);
   }, []);
 
   return (
-    <TelegramContext.Provider value={{ tg, user }}>
+    <TelegramContext.Provider value={{ tg, user, isLoading }}>
       {children}
     </TelegramContext.Provider>
   );
