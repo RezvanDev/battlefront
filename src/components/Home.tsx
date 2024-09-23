@@ -14,7 +14,7 @@ const Home: React.FC<HomeProps> = ({ onDeposit }) => {
   const { user, loading, error } = useUser();
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <div>Loadinggg...</div>;
   }
 
   if (error) {
