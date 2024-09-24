@@ -9,8 +9,7 @@ const SEGMENT_DEGREE = 360 / SEGMENTS;
 const Game: React.FC = () => {
   const [gameStatus, setGameStatus] = useState<'WAITING' | 'PLAYING' | 'FINISHED'>('WAITING');
   const [currentRound, setCurrentRound] = useState(1);
-  const [playerColor, setPlayerColor] = useState<'red' | 'black' | null>(null);
-  const [opponentColor, setOpponentColor] = useState<'red' | 'black' | null>(null);
+  const [creatorColor, setCreatorColor] = useState<'red' | 'black' | null>(null);
   const [isCreator, setIsCreator] = useState(false);
   const [isUserTurn, setIsUserTurn] = useState(false);
   const [creatorWins, setCreatorWins] = useState(0);
@@ -49,17 +48,10 @@ const Game: React.FC = () => {
     setCreatorWins(game.creatorWins);
     setParticipantWins(game.participantWins);
     setIsCreator(game.creator.id === user?.id);
+    setCreatorColor(game.creatorColor);
     
     const isCreatorTurn = game.currentRound % 2 !== 0;
     setIsUserTurn((isCreator && isCreatorTurn) || (!isCreator && !isCreatorTurn));
-
-    if (isCreator) {
-      setPlayerColor(game.creatorColor);
-      setOpponentColor(game.creatorColor === 'red' ? 'black' : 'red');
-    } else {
-      setOpponentColor(game.creatorColor);
-      setPlayerColor(game.creatorColor === 'red' ? 'black' : 'red');
-    }
 
     if (game.status === 'FINISHED') {
       navigate(`/waiting-results/${lobbyCode}`);
@@ -67,11 +59,9 @@ const Game: React.FC = () => {
   };
 
   const handleColorSelect = async (color: 'red' | 'black') => {
-    if (!user || !lobbyCode) return;
+    if (!user || !lobbyCode || !isCreator) return;
     try {
       const result = await chooseColor(user.id.toString(), lobbyCode, color);
-      setPlayerColor(color);
-      setOpponentColor(color === 'red' ? 'black' : 'red');
       updateGameState(result.game);
     } catch (error) {
       console.error('Error selecting color:', error);
@@ -79,7 +69,7 @@ const Game: React.FC = () => {
   };
 
   const handleSpin = async () => {
-    if (!user || !lobbyCode) return;
+    if (!user || !lobbyCode || !isUserTurn) return;
     setIsSpinning(true);
     let angle = rotationAngle;
     spinIntervalRef.current = window.setInterval(() => {
@@ -138,6 +128,14 @@ const Game: React.FC = () => {
     return segments;
   };
 
+  const getUserColor = () => {
+    if (isCreator) {
+      return creatorColor;
+    } else {
+      return creatorColor === 'red' ? 'black' : 'red';
+    }
+  };
+
   if (gameStatus === 'WAITING') {
     return (
       <div className="flex flex-col h-screen bg-gradient-to-b from-gray-900 to-black text-white items-center justify-center">
@@ -154,12 +152,11 @@ const Game: React.FC = () => {
         <div className="text-xl mt-2">
           {isUserTurn ? 'Ваш ход' : 'Ход противника'}
         </div>
-        <div className="text-xl mt-2">
-          Ваш цвет: <span className={playerColor === 'red' ? 'text-red-500' : 'text-gray-300'}>{playerColor}</span>
-        </div>
-        <div className="text-xl mt-2">
-          Цвет противника: <span className={opponentColor === 'red' ? 'text-red-500' : 'text-gray-300'}>{opponentColor}</span>
-        </div>
+        {creatorColor && (
+          <div className="text-xl mt-2">
+            Ваш цвет: <span className={getUserColor() === 'red' ? 'text-red-500' : 'text-gray-300'}>{getUserColor()}</span>
+          </div>
+        )}
       </div>
 
       <div className="flex-grow flex flex-col items-center justify-center relative">
@@ -181,7 +178,7 @@ const Game: React.FC = () => {
         </div>
       </div>
 
-      {isUserTurn && currentRound === 1 && playerColor === null && isCreator && (
+      {isUserTurn && currentRound === 1 && !creatorColor && isCreator && (
         <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4 mt-4">
           <button
             className="w-full sm:w-1/2 py-4 rounded-xl bg-red-600"
@@ -198,7 +195,7 @@ const Game: React.FC = () => {
         </div>
       )}
 
-      {isUserTurn && !isSpinning && playerColor !== null && (
+      {isUserTurn && !isSpinning && creatorColor && (
         <button
           className="mt-4 w-full py-4 bg-blue-600 rounded-xl"
           onClick={handleSpin}
