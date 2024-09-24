@@ -33,8 +33,8 @@ export const getGameStatus = async (lobbyCode: string) => {
   return response.data;
 };
 
-export const spinWheel = async (telegramId: string, lobbyCode: string, selectedColor: 'red' | 'black') => {
-  const response = await api.post(`/game/${telegramId}/${lobbyCode}/spin`, { selectedColor });
+export const spinWheel = async (telegramId: string, lobbyCode: string) => {
+  const response = await api.post(`/game/${telegramId}/${lobbyCode}/spin`);
   return response.data;
 };
 
@@ -61,7 +61,9 @@ export const getBalance = async (telegramId: string) => {
   }
 };
 
-// Удалим функцию updateBalance, так как она больше не используется
-// Удалим функцию setPlayerReady, так как она больше не нужна
+export const chooseColor = async (telegramId: string, lobbyCode: string, selectedColor: 'red' | 'black') => {
+  const response = await api.post(`/game/${telegramId}/${lobbyCode}/choose-color`, { selectedColor });
+  return response.data;
+};
 
 export default api;
