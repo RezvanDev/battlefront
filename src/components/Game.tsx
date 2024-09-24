@@ -179,16 +179,16 @@ const Game: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex justify-center space-x-4 mt-4">
+      <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4 mt-4">
         <button
-          className={`w-1/2 py-4 rounded-xl ${playerColor === 'red' ? 'bg-red-600' : 'bg-red-800'}`}
+          className={`w-full sm:w-1/2 py-4 rounded-xl ${playerColor === 'red' ? 'bg-red-600' : 'bg-red-800'}`}
           onClick={() => handleColorSelect('red')}
           disabled={playerColor !== null || isSpinning}
         >
           Красный
         </button>
         <button
-          className={`w-1/2 py-4 rounded-xl ${playerColor === 'black' ? 'bg-gray-800' : 'bg-gray-900'}`}
+          className={`w-full sm:w-1/2 py-4 rounded-xl ${playerColor === 'black' ? 'bg-gray-800' : 'bg-gray-900'}`}
           onClick={() => handleColorSelect('black')}
           disabled={playerColor !== null || isSpinning}
         >
@@ -196,7 +196,7 @@ const Game: React.FC = () => {
         </button>
       </div>
 
-      {isSpinning && (
+      {(isSpinning || playerColor !== null) && (
         <button
           className="mt-4 w-full py-4 bg-blue-600 rounded-xl"
           onClick={handleStop}
