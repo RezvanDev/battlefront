@@ -41,7 +41,7 @@ const Game: React.FC = () => {
     };
 
     fetchGameStatus();
-    const interval = setInterval(fetchGameStatus, 5000);
+    const interval = setInterval(fetchGameStatus, 1000);
 
     return () => clearInterval(interval);
   }, [lobbyCode, user]);
@@ -84,15 +84,7 @@ const Game: React.FC = () => {
     setCreatorWins(game.creatorWins);
     setParticipantWins(game.participantWins);
     setIsCreator(game.creator.id === user?.id);
-    
-    const isCreatorTurn = game.currentRound % 2 !== 0;
-    setIsUserTurn((isCreator && isCreatorTurn) || (!isCreator && !isCreatorTurn));
-
-    if (isCreator) {
-      setPlayerColor(game.creatorColor);
-    } else {
-      setPlayerColor(game.creatorColor === 'red' ? 'black' : 'red');
-    }
+    setIsUserTurn(game.currentTurn === (isCreator ? 'creator' : 'participant'));
 
     if (game.status === 'FINISHED') {
       navigate(`/waiting-results/${lobbyCode}`);
@@ -104,7 +96,6 @@ const Game: React.FC = () => {
     try {
       await chooseColor(user.id.toString(), lobbyCode, color);
       setPlayerColor(color);
-      spin();
     } catch (error) {
       console.error('Error selecting color:', error);
     }
@@ -135,10 +126,10 @@ const Game: React.FC = () => {
       setResult(isWin ? 'win' : 'lose');
       updateGameState(updatedGame);
 
-      // Показываем результат на 3 секунды перед следующим ходом
       setTimeout(() => {
         setResult(null);
         setLandedColor(null);
+        setPlayerColor(null);
         setShowRoundInfo(true);
       }, 3000);
     } catch (error) {
@@ -185,7 +176,7 @@ const Game: React.FC = () => {
   if (showRoundInfo) {
     return (
       <div className="flex flex-col h-screen bg-gradient-to-b from-gray-900 to-black text-white items-center justify-center">
-        <div className="text-4xl font-bold mb-4">Раунд {currentRound}/3</div>
+        <div className="text-4xl font-bold mb-4">Раунд {currentRound}</div>
       </div>
     );
   }
@@ -193,7 +184,7 @@ const Game: React.FC = () => {
   return (
     <div className="flex flex-col h-screen bg-gradient-to-b from-gray-900 to-black text-white p-4">
       <div className="text-center mb-4">
-        <div className="text-2xl font-bold">Раунд {currentRound}/3</div>
+        <div className="text-2xl font-bold">Раунд {currentRound}</div>
         <div className="text-xl mt-2">Создатель: {creatorWins} | Участник: {participantWins}</div>
         <div className="text-xl mt-2">
           {isUserTurn ? 'Ваш ход' : 'Ход противника'}
@@ -240,6 +231,15 @@ const Game: React.FC = () => {
             Черный
           </button>
         </div>
+      )}
+
+      {isUserTurn && playerColor && !isSpinning && (
+        <button
+          className="mt-4 w-full py-4 bg-blue-600 rounded-xl"
+          onClick={spin}
+        >
+          Крутить колесо
+        </button>
       )}
 
       {isUserTurn && isSpinning && (
