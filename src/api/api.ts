@@ -11,12 +11,6 @@ const api = axios.create({
   withCredentials: true,
 });
 
-export const setPlayerReady = async (telegramId: string, lobbyCode: string) => {
-  const response = await api.post(`/game/${telegramId}/${lobbyCode}/ready`);
-  return response.data;
-};
-
-
 export const createGame = async (telegramId: string, bet: number) => {
   const response = await api.post(`/game/${telegramId}/create`, { bet });
   return response.data;
@@ -47,7 +41,6 @@ export const spinWheel = async (telegramId: string, lobbyCode: string, selectedC
 export const getBalance = async (telegramId: string) => {
   const url = `/users/${telegramId}/balance`;
   console.log(`Запрос баланса для пользователя ${telegramId}. URL: ${API_URL}${url}`);
-  
   try {
     const response = await api.get(url);
     console.log('Ответ сервера:', response.data);
@@ -57,8 +50,8 @@ export const getBalance = async (telegramId: string) => {
       console.error('Ошибка при загрузке баланса:', error.response?.data || error.message);
       console.error('Статус ошибки:', error.response?.status);
       console.error('Заголовки ответа:', error.response?.headers);
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: error.response?.data?.error || 'Ошибка при загрузке баланса',
         status: error.response?.status,
       };
@@ -68,11 +61,7 @@ export const getBalance = async (telegramId: string) => {
   }
 };
 
-export const updateBalance = async (telegramId: string, amount: number, operation: 'add' | 'subtract') => {
-  const response = await api.post(`/users/${telegramId}/balance`, null, {
-    params: { amount, operation }
-  });
-  return response.data;
-};
+// Удалим функцию updateBalance, так как она больше не используется
+// Удалим функцию setPlayerReady, так как она больше не нужна
 
 export default api;
