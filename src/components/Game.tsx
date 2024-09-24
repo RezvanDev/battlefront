@@ -16,6 +16,7 @@ const Game: React.FC = () => {
   const [landedColor, setLandedColor] = useState<'red' | 'black' | null>(null);
   const [gameStatus, setGameStatus] = useState<'WAITING' | 'PLAYING' | 'FINISHED'>('WAITING');
   const [playerWins, setPlayerWins] = useState(0);
+  const [playerRoundsPlayed, setPlayerRoundsPlayed] = useState(0);
 
   const { lobbyCode } = useParams<{ lobbyCode: string }>();
   const navigate = useNavigate();
@@ -29,10 +30,17 @@ const Game: React.FC = () => {
       try {
         const data = await getGameStatus(lobbyCode);
         setGameStatus(data.game.status);
-        setCurrentRound(data.game.currentRound);
-        setPlayerWins(user.id === data.game.creator.id ? data.game.creatorWins : data.game.participantWins);
+        if (user.id === data.game.creator.id) {
+          setCurrentRound(data.game.creatorRoundsPlayed + 1);
+          setPlayerWins(data.game.creatorWins);
+          setPlayerRoundsPlayed(data.game.creatorRoundsPlayed);
+        } else if (data.game.participant && user.id === data.game.participant.id) {
+          setCurrentRound(data.game.participantRoundsPlayed + 1);
+          setPlayerWins(data.game.participantWins);
+          setPlayerRoundsPlayed(data.game.participantRoundsPlayed);
+        }
         
-        if (data.game.status === 'FINISHED') {
+        if (data.game.status === 'FINISHED' || playerRoundsPlayed >= 3) {
           navigate(`/waiting-results/${lobbyCode}`);
         }
       } catch (error) {
@@ -44,7 +52,7 @@ const Game: React.FC = () => {
     const interval = setInterval(fetchGameStatus, 5000);
 
     return () => clearInterval(interval);
-  }, [lobbyCode, user, navigate]);
+  }, [lobbyCode, user, navigate, playerRoundsPlayed]);
 
   useEffect(() => {
     if (showRoundInfo) {
@@ -85,14 +93,13 @@ const Game: React.FC = () => {
     
     try {
       const data = await spinWheel(user.id.toString(), lobbyCode, playerColor || 'red');
-      const { isWin, updatedGame } = data.result;
+      const { isWin } = data.result;
       
       setResult(isWin ? 'win' : 'lose');
       setPlayerWins(prevWins => prevWins + (isWin ? 1 : 0));
-      setCurrentRound(updatedGame.currentRound);
-      setGameStatus(updatedGame.status);
+      setPlayerRoundsPlayed(prevRounds => prevRounds + 1);
 
-      if (updatedGame.status === 'FINISHED') {
+      if (playerRoundsPlayed + 1 >= 3) {
         navigate(`/waiting-results/${lobbyCode}`);
       } else {
         // Автоматический переход к следующему раунду через 3 секунды
@@ -102,6 +109,7 @@ const Game: React.FC = () => {
           setResult(null);
           setRotationAngle(0);
           setLandedColor(null);
+          setCurrentRound(prevRound => prevRound + 1);
         }, 3000);
       }
     } catch (error) {
