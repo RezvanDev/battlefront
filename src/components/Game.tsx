@@ -21,6 +21,9 @@ const Game: React.FC = () => {
   const [balance, setBalance] = useState(0);
   const [isReady, setIsReady] = useState(false);
   const [opponentReady, setOpponentReady] = useState(false);
+  const [creatorWins, setCreatorWins] = useState(0);
+  const [participantWins, setParticipantWins] = useState(0);
+  const [isCreator, setIsCreator] = useState(false);
 
   const { lobbyCode } = useParams<{ lobbyCode: string }>();
   const navigate = useNavigate();
@@ -31,17 +34,20 @@ const Game: React.FC = () => {
 
   useEffect(() => {
     const fetchGameStatus = async () => {
-      if (!lobbyCode) return;
+      if (!lobbyCode || !user) return;
       try {
         const data = await getGameStatus(lobbyCode);
         setGameStatus(data.game.status);
         setBet(data.game.bet);
         setCurrentRound(data.game.currentRound);
-        if (user && user.id === data.game.creator.id) {
+        setCreatorWins(data.game.creatorWins);
+        setParticipantWins(data.game.participantWins);
+        setIsCreator(user.id === data.game.creator.id);
+        if (user.id === data.game.creator.id) {
           setBalance(data.game.creator.balance);
           setIsReady(data.game.creatorReady);
           setOpponentReady(data.game.participantReady);
-        } else if (user && data.game.participant && user.id === data.game.participant.id) {
+        } else if (data.game.participant && user.id === data.game.participant.id) {
           setBalance(data.game.participant.balance);
           setIsReady(data.game.participantReady);
           setOpponentReady(data.game.creatorReady);
@@ -71,7 +77,7 @@ const Game: React.FC = () => {
       timeIntervalRef.current = window.setInterval(() => {
         setTimeLeft((prevTime) => {
           if (prevTime <= 0) {
-            handleStop(false, rotationAngle, playerColor || 'red');
+            handleStop(false, rotationAngle, 'red'); // Автоматический проигрыш при истечении времени
             return 0;
           }
           return prevTime - 100;
@@ -87,20 +93,17 @@ const Game: React.FC = () => {
         clearInterval(timeIntervalRef.current);
       }
     };
-  }, [isSpinning, rotationAngle, playerColor]);
+  }, [isSpinning, rotationAngle]);
 
   const handleColorSelect = async (color: 'red' | 'black') => {
+    if (!user || !lobbyCode) return;
     setPlayerColor(color);
     setIsSpinning(true);
     setTimeLeft(TIME_LIMIT);
 
     try {
-      if (!user || !user.id || !lobbyCode) {
-        console.error('User ID или lobbyCode не найден');
-        return;
-      }
       const data = await spinWheel(user.id.toString(), lobbyCode, color);
-      const { isWin, angle, newBalance, wheelColor } = data.result;
+      const { isWin, angle, wheelColor } = data.result;
 
       let currentAngle = rotationAngle;
       spinIntervalRef.current = window.setInterval(() => {
@@ -112,7 +115,9 @@ const Game: React.FC = () => {
         }
       }, 20);
 
-      setBalance(newBalance);
+      setBalance(data.result.updatedGame.creator.id === user.id 
+        ? data.result.updatedGame.creator.balance 
+        : data.result.updatedGame.participant.balance);
     } catch (error) {
       console.error('Error spinning wheel:', error);
       setIsSpinning(false);
@@ -124,16 +129,16 @@ const Game: React.FC = () => {
       clearInterval(spinIntervalRef.current);
     }
     setIsSpinning(false);
-    
     setRotationAngle(finalAngle);
     setLandedColor(finalColor);
     setResult(isWin ? 'win' : 'lose');
     setIsReady(false);
     setOpponentReady(false);
+    setShowRoundInfo(true);
   };
 
   const handleReady = async () => {
-    if (!user || !user.id || !lobbyCode) return;
+    if (!user || !lobbyCode) return;
     try {
       await setPlayerReady(user.id.toString(), lobbyCode);
       setIsReady(true);
@@ -194,6 +199,7 @@ const Game: React.FC = () => {
         <div className="text-xl mt-2">Время: {(timeLeft / 1000).toFixed(1)} сек</div>
         <div className="text-xl mt-2">Баланс: {balance}$</div>
         <div className="text-xl mt-2">Ставка: {bet}$</div>
+        <div className="text-xl mt-2">Счет: {isCreator ? creatorWins : participantWins} - {isCreator ? participantWins : creatorWins}</div>
       </div>
 
       <div className="flex-grow flex flex-col items-center justify-center relative">
@@ -262,12 +268,22 @@ const Game: React.FC = () => {
       )}
 
       {gameStatus === 'FINISHED' && (
-        <button
-          className="w-full py-4 bg-blue-600 rounded-xl mt-4"
-          onClick={() => navigate('/')}
-        >
-          Вернуться в главное меню
-        </button>
+        <div className="mt-4 text-center">
+          <div className="text-2xl font-bold mb-2">
+            Игра завершена!
+          </div>
+          <div className="text-xl mb-2">
+            {creatorWins > participantWins 
+              ? (isCreator ? 'Вы выиграли игру!' : 'Вы проиграли игру.') 
+              : (isCreator ? 'Вы проиграли игру.' : 'Вы выиграли игру!')}
+          </div>
+          <button
+            className="w-full py-4 bg-blue-600 rounded-xl mt-4"
+            onClick={() => navigate('/')}
+          >
+            Вернуться в главное меню
+          </button>
+        </div>
       )}
     </div>
   );
