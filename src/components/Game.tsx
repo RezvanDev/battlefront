@@ -238,7 +238,7 @@ const Game: React.FC = () => {
           className="mt-4 w-full py-4 bg-blue-600 rounded-xl"
           onClick={spin}
         >
-          Крутить колесо
+          Крутить колесов
         </button>
       )}
 
