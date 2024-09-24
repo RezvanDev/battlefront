@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://9dab-202-79-184-241.ngrok-free.app/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://bc08-202-79-184-241.ngrok-free.app/api';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -10,6 +10,12 @@ const api = axios.create({
   },
   withCredentials: true,
 });
+
+export const setPlayerReady = async (telegramId: string, lobbyCode: string) => {
+  const response = await api.post(`/game/${telegramId}/${lobbyCode}/ready`);
+  return response.data;
+};
+
 
 export const createGame = async (telegramId: string, bet: number) => {
   const response = await api.post(`/game/${telegramId}/create`, { bet });

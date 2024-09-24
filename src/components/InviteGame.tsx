@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { createGame, getBalance } from '../api/api';
 import { useTelegram } from '../context/TelegramContext';
 
+const BET_OPTIONS = [10, 20, 50, 100];
+
 const InviteGame: React.FC = () => {
   const [inviteLink, setInviteLink] = useState('');
   const [lobbyCode, setLobbyCode] = useState('');
@@ -73,12 +75,15 @@ const InviteGame: React.FC = () => {
         <div className="w-full max-w-md bg-[#232f3b] rounded-2xl p-4 mb-4">
           <div className="flex items-center justify-between bg-[#1e2327] rounded-xl p-3 mb-2">
             <span className="text-[#4CAF50]">Ставка</span>
-            <input
-              type="number"
+            <select
               value={bet}
-              onChange={(e) => setBet(Math.max(10, Math.min(balance, Number(e.target.value))))}
-              className="bg-[#1e2327] text-[#4CAF50] p-1 rounded w-24 text-right"
-            />
+              onChange={(e) => setBet(Number(e.target.value))}
+              className="bg-[#1e2327] text-[#4CAF50] p-1 rounded"
+            >
+              {BET_OPTIONS.map((option) => (
+                <option key={option} value={option}>{option}$</option>
+              ))}
+            </select>
           </div>
         </div>
         {!lobbyCode ? (

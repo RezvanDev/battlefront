@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { spinWheel, getGameStatus } from '../api/api';
+import { spinWheel, getGameStatus, setPlayerReady } from '../api/api';
 import { useTelegram } from '../context/TelegramContext';
 
 const SEGMENTS = 50;
@@ -19,6 +19,8 @@ const Game: React.FC = () => {
   const [bet, setBet] = useState(0);
   const [gameStatus, setGameStatus] = useState<'WAITING' | 'PLAYING' | 'FINISHED'>('WAITING');
   const [balance, setBalance] = useState(0);
+  const [isReady, setIsReady] = useState(false);
+  const [opponentReady, setOpponentReady] = useState(false);
 
   const { lobbyCode } = useParams<{ lobbyCode: string }>();
   const navigate = useNavigate();
@@ -34,10 +36,15 @@ const Game: React.FC = () => {
         const data = await getGameStatus(lobbyCode);
         setGameStatus(data.game.status);
         setBet(data.game.bet);
+        setCurrentRound(data.game.currentRound);
         if (user && user.id === data.game.creator.id) {
           setBalance(data.game.creator.balance);
+          setIsReady(data.game.creatorReady);
+          setOpponentReady(data.game.participantReady);
         } else if (user && data.game.participant && user.id === data.game.participant.id) {
           setBalance(data.game.participant.balance);
+          setIsReady(data.game.participantReady);
+          setOpponentReady(data.game.creatorReady);
         }
       } catch (error) {
         console.error('Error fetching game status:', error);
@@ -121,20 +128,17 @@ const Game: React.FC = () => {
     setRotationAngle(finalAngle);
     setLandedColor(finalColor);
     setResult(isWin ? 'win' : 'lose');
+    setIsReady(false);
+    setOpponentReady(false);
   };
 
-  const handleNextRound = () => {
-    if (currentRound < 3) {
-      setCurrentRound(currentRound + 1);
-      setShowRoundInfo(true);
-      setPlayerColor(null);
-      setResult(null);
-      setRotationAngle(0);
-      setIsSpinning(false);
-      setTimeLeft(TIME_LIMIT);
-      setLandedColor(null);
-    } else {
-      navigate('/');
+  const handleReady = async () => {
+    if (!user || !user.id || !lobbyCode) return;
+    try {
+      await setPlayerReady(user.id.toString(), lobbyCode);
+      setIsReady(true);
+    } catch (error) {
+      console.error('Error setting player ready:', error);
     }
   };
 
@@ -186,7 +190,7 @@ const Game: React.FC = () => {
   return (
     <div className="flex flex-col h-screen bg-gradient-to-b from-gray-900 to-black text-white p-4">
       <div className="text-center mb-4">
-        <div className="text-2xl font-bold">Выберите цвет</div>
+        <div className="text-2xl font-bold">Раунд {currentRound}/3</div>
         <div className="text-xl mt-2">Время: {(timeLeft / 1000).toFixed(1)} сек</div>
         <div className="text-xl mt-2">Баланс: {balance}$</div>
         <div className="text-xl mt-2">Ставка: {bet}$</div>
@@ -211,18 +215,33 @@ const Game: React.FC = () => {
         </div>
       </div>
 
+      {!isReady && !isSpinning && (
+        <button
+          className="w-full py-4 bg-green-600 rounded-xl mb-4"
+          onClick={handleReady}
+        >
+          Готов к следующему раунду
+        </button>
+      )}
+
+      {isReady && !opponentReady && (
+        <div className="text-center mb-4">
+          Ожидание готовности соперника...
+        </div>
+      )}
+
       <div className="flex justify-center space-x-4 mt-4">
         <button
           className={`w-1/2 py-4 rounded-xl ${playerColor === 'red' ? 'bg-red-600' : 'bg-red-800'}`}
           onClick={() => handleColorSelect('red')}
-          disabled={playerColor !== null || isSpinning}
+          disabled={!isReady || !opponentReady || isSpinning}
         >
           Красный
         </button>
         <button
           className={`w-1/2 py-4 rounded-xl ${playerColor === 'black' ? 'bg-gray-800' : 'bg-gray-900'}`}
           onClick={() => handleColorSelect('black')}
-          disabled={playerColor !== null || isSpinning}
+          disabled={!isReady || !opponentReady || isSpinning}
         >
           Черный
         </button>
@@ -239,13 +258,16 @@ const Game: React.FC = () => {
           <div className="text-xl mb-2">
             Ваш выбор: <span className={playerColor === 'red' ? 'text-red-500' : 'text-gray-300'}>{playerColor}</span>
           </div>
-          <button
-            className="w-full py-4 bg-green-600 rounded-xl"
-            onClick={handleNextRound}
-          >
-            {currentRound < 3 ? 'Следующий раунд' : 'Завершить игру'}
-          </button>
         </div>
+      )}
+
+      {gameStatus === 'FINISHED' && (
+        <button
+          className="w-full py-4 bg-blue-600 rounded-xl mt-4"
+          onClick={() => navigate('/')}
+        >
+          Вернуться в главное меню
+        </button>
       )}
     </div>
   );
