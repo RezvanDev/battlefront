@@ -7,51 +7,31 @@ const SEGMENTS = 50;
 const SEGMENT_DEGREE = 360 / SEGMENTS;
 
 const Game: React.FC = () => {
+  const [gameStatus, setGameStatus] = useState<'WAITING' | 'PLAYING' | 'FINISHED'>('WAITING');
   const [currentRound, setCurrentRound] = useState(1);
-  const [showRoundInfo, setShowRoundInfo] = useState(true);
   const [playerColor, setPlayerColor] = useState<'red' | 'black' | null>(null);
   const [opponentColor, setOpponentColor] = useState<'red' | 'black' | null>(null);
-  const [isSpinning, setIsSpinning] = useState(false);
-  const [result, setResult] = useState<'win' | 'lose' | null>(null);
-  const [rotationAngle, setRotationAngle] = useState(0);
-  const [landedColor, setLandedColor] = useState<'red' | 'black' | null>(null);
-  const [gameStatus, setGameStatus] = useState<'WAITING' | 'PLAYING' | 'FINISHED'>('WAITING');
+  const [isCreator, setIsCreator] = useState(false);
+  const [isUserTurn, setIsUserTurn] = useState(false);
   const [creatorWins, setCreatorWins] = useState(0);
   const [participantWins, setParticipantWins] = useState(0);
-  const [isCreatorTurn, setIsCreatorTurn] = useState(true);
-  const [timeLeft, setTimeLeft] = useState(10);
-  const [isCreator, setIsCreator] = useState(false);
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [rotationAngle, setRotationAngle] = useState(0);
+  const [result, setResult] = useState<'win' | 'lose' | null>(null);
+  const [landedColor, setLandedColor] = useState<'red' | 'black' | null>(null);
 
   const { lobbyCode } = useParams<{ lobbyCode: string }>();
   const navigate = useNavigate();
   const { user } = useTelegram();
 
   const spinIntervalRef = useRef<number | null>(null);
-  const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const fetchGameStatus = async () => {
       if (!lobbyCode || !user) return;
       try {
         const data = await getGameStatus(lobbyCode);
-        setGameStatus(data.game.status);
-        setCreatorWins(data.game.creatorWins);
-        setParticipantWins(data.game.participantWins);
-        setCurrentRound(data.game.currentRound);
-        setIsCreatorTurn(data.game.currentRound % 2 !== 0);
-        setIsCreator(data.game.creator.id === user.id);
-        
-        if (isCreator) {
-          setPlayerColor(data.game.creatorColor);
-          setOpponentColor(data.game.creatorColor === 'red' ? 'black' : 'red');
-        } else {
-          setOpponentColor(data.game.creatorColor);
-          setPlayerColor(data.game.creatorColor === 'red' ? 'black' : 'red');
-        }
-
-        if (data.game.status === 'FINISHED') {
-          navigate(`/waiting-results/${lobbyCode}`);
-        }
+        updateGameState(data.game);
       } catch (error) {
         console.error('Error fetching game status:', error);
       }
@@ -61,98 +41,72 @@ const Game: React.FC = () => {
     const interval = setInterval(fetchGameStatus, 5000);
 
     return () => clearInterval(interval);
-  }, [lobbyCode, user, navigate, isCreator]);
+  }, [lobbyCode, user]);
 
-  useEffect(() => {
-    if (showRoundInfo) {
-      const timer = setTimeout(() => {
-        setShowRoundInfo(false);
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [showRoundInfo]);
+  const updateGameState = (game: any) => {
+    setGameStatus(game.status);
+    setCurrentRound(game.currentRound);
+    setCreatorWins(game.creatorWins);
+    setParticipantWins(game.participantWins);
+    setIsCreator(game.creator.id === user?.id);
+    
+    const isCreatorTurn = game.currentRound % 2 !== 0;
+    setIsUserTurn((isCreator && isCreatorTurn) || (!isCreator && !isCreatorTurn));
 
-  useEffect(() => {
-    if (isSpinning) {
-      timerRef.current = window.setInterval(() => {
-        setTimeLeft((prevTime) => {
-          if (prevTime <= 1) {
-            handleStop();
-            return 0;
-          }
-          return prevTime - 1;
-        });
-      }, 1000);
+    if (isCreator) {
+      setPlayerColor(game.creatorColor);
+      setOpponentColor(game.creatorColor === 'red' ? 'black' : 'red');
+    } else {
+      setOpponentColor(game.creatorColor);
+      setPlayerColor(game.creatorColor === 'red' ? 'black' : 'red');
     }
 
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
-  }, [isSpinning]);
-
-  const spin = () => {
-    setIsSpinning(true);
-    setTimeLeft(10);
-    let angle = rotationAngle;
-    spinIntervalRef.current = window.setInterval(() => {
-      angle += 10;
-      setRotationAngle(angle % 360);
-    }, 20);
+    if (game.status === 'FINISHED') {
+      navigate(`/waiting-results/${lobbyCode}`);
+    }
   };
 
   const handleColorSelect = async (color: 'red' | 'black') => {
     if (!user || !lobbyCode) return;
     try {
-      await chooseColor(user.id.toString(), lobbyCode, color);
+      const result = await chooseColor(user.id.toString(), lobbyCode, color);
       setPlayerColor(color);
       setOpponentColor(color === 'red' ? 'black' : 'red');
+      updateGameState(result.game);
     } catch (error) {
       console.error('Error selecting color:', error);
     }
   };
 
-  const handleStop = async () => {
+  const handleSpin = async () => {
     if (!user || !lobbyCode) return;
-    if (spinIntervalRef.current) {
-      clearInterval(spinIntervalRef.current);
-    }
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-    setIsSpinning(false);
-    
-    const finalAngle = (360 - (rotationAngle % 360)) % 360;
-    const segment = Math.floor(finalAngle / SEGMENT_DEGREE);
-    const isRed = segment % 2 === 0;
-    const finalColor = isRed ? 'red' : 'black';
-    
-    setLandedColor(finalColor);
-    
-    try {
-      const data = await spinWheel(user.id.toString(), lobbyCode);
-      const { isWin, updatedGame } = data.result;
-      
-      setResult(isWin ? 'win' : 'lose');
-      setCreatorWins(updatedGame.creatorWins);
-      setParticipantWins(updatedGame.participantWins);
-      setCurrentRound(updatedGame.currentRound);
-      setIsCreatorTurn(updatedGame.currentRound % 2 !== 0);
+    setIsSpinning(true);
+    let angle = rotationAngle;
+    spinIntervalRef.current = window.setInterval(() => {
+      angle += 10;
+      setRotationAngle(angle % 360);
+    }, 20);
 
-      if (updatedGame.status === 'FINISHED') {
-        navigate(`/waiting-results/${lobbyCode}`);
-      } else {
-        // Автоматический переход к следующему раунду через 3 секунды
-        setTimeout(() => {
-          setShowRoundInfo(true);
-          setResult(null);
-          setRotationAngle(0);
-          setLandedColor(null);
-        }, 3000);
+    try {
+      const result = await spinWheel(user.id.toString(), lobbyCode);
+      if (spinIntervalRef.current) {
+        clearInterval(spinIntervalRef.current);
       }
+      setIsSpinning(false);
+      
+      const { isWin, wheelColor, updatedGame } = result.result;
+      setResult(isWin ? 'win' : 'lose');
+      setLandedColor(wheelColor);
+      updateGameState(updatedGame);
+
+      // Показываем результат на 3 секунды перед следующим ходом
+      setTimeout(() => {
+        setResult(null);
+        setLandedColor(null);
+      }, 3000);
     } catch (error) {
-      console.error('Error updating game status:', error);
+      console.error('Error spinning wheel:', error);
+      setIsSpinning(false);
     }
   };
 
@@ -192,16 +146,6 @@ const Game: React.FC = () => {
     );
   }
 
-  if (showRoundInfo) {
-    return (
-      <div className="flex flex-col h-screen bg-gradient-to-b from-gray-900 to-black text-white items-center justify-center">
-        <div className="text-4xl font-bold mb-4">Раунд {currentRound}</div>
-      </div>
-    );
-  }
-
-  const isUserTurn = (isCreator && isCreatorTurn) || (!isCreator && !isCreatorTurn);
-
   return (
     <div className="flex flex-col h-screen bg-gradient-to-b from-gray-900 to-black text-white p-4">
       <div className="text-center mb-4">
@@ -237,7 +181,7 @@ const Game: React.FC = () => {
         </div>
       </div>
 
-      {isUserTurn && currentRound === 1 && playerColor === null && (
+      {isUserTurn && currentRound === 1 && playerColor === null && isCreator && (
         <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4 mt-4">
           <button
             className="w-full sm:w-1/2 py-4 rounded-xl bg-red-600"
@@ -257,24 +201,10 @@ const Game: React.FC = () => {
       {isUserTurn && !isSpinning && playerColor !== null && (
         <button
           className="mt-4 w-full py-4 bg-blue-600 rounded-xl"
-          onClick={spin}
+          onClick={handleSpin}
         >
           Крутить колесо
         </button>
-      )}
-
-      {isUserTurn && isSpinning && (
-        <div className="mt-4 text-center">
-          <div className="text-2xl font-bold mb-2">
-            Осталось времени: {timeLeft} сек
-          </div>
-          <button
-            className="mt-4 w-full py-4 bg-blue-600 rounded-xl"
-            onClick={handleStop}
-          >
-            Остановить
-          </button>
-        </div>
       )}
 
       {result && (
@@ -284,9 +214,6 @@ const Game: React.FC = () => {
           </div>
           <div className="text-xl mb-2">
             Выпал цвет: <span className={landedColor === 'red' ? 'text-red-500' : 'text-gray-300'}>{landedColor}</span>
-          </div>
-          <div className="text-xl mb-2">
-            Ваш выбор: <span className={playerColor === 'red' ? 'text-red-500' : 'text-gray-300'}>{playerColor}</span>
           </div>
         </div>
       )}
