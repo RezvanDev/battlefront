@@ -19,6 +19,7 @@ const Game: React.FC = () => {
   const [participantWins, setParticipantWins] = useState(0);
   const [isCreatorTurn, setIsCreatorTurn] = useState(true);
   const [timeLeft, setTimeLeft] = useState(10);
+  const [isCreator, setIsCreator] = useState(false);
 
   const { lobbyCode } = useParams<{ lobbyCode: string }>();
   const navigate = useNavigate();
@@ -38,6 +39,7 @@ const Game: React.FC = () => {
         setCurrentRound(data.game.currentRound);
         setIsCreatorTurn(data.game.currentRound % 2 !== 0);
         setPlayerColor(data.game.creatorColor);
+        setIsCreator(data.game.creator.id === user.id);
         
         if (data.game.status === 'FINISHED') {
           navigate(`/waiting-results/${lobbyCode}`);
@@ -189,8 +191,7 @@ const Game: React.FC = () => {
     );
   }
 
-  const isUserTurn = (user?.id.toString() === lobbyCode && isCreatorTurn) || 
-                     (user?.id.toString() !== lobbyCode && !isCreatorTurn);
+  const isUserTurn = (isCreator && isCreatorTurn) || (!isCreator && !isCreatorTurn);
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-b from-gray-900 to-black text-white p-4">
@@ -221,16 +222,16 @@ const Game: React.FC = () => {
         </div>
       </div>
 
-      {isUserTurn && !isSpinning && currentRound === 1 && user?.id.toString() === lobbyCode && (
+      {isCreator && currentRound === 1 && playerColor === null && (
         <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4 mt-4">
           <button
-            className={`w-full sm:w-1/2 py-4 rounded-xl ${playerColor === 'red' ? 'bg-red-600' : 'bg-red-800'}`}
+            className="w-full sm:w-1/2 py-4 rounded-xl bg-red-600"
             onClick={() => handleColorSelect('red')}
           >
             Красный
           </button>
           <button
-            className={`w-full sm:w-1/2 py-4 rounded-xl ${playerColor === 'black' ? 'bg-gray-800' : 'bg-gray-900'}`}
+            className="w-full sm:w-1/2 py-4 rounded-xl bg-gray-800"
             onClick={() => handleColorSelect('black')}
           >
             Черный
@@ -238,7 +239,7 @@ const Game: React.FC = () => {
         </div>
       )}
 
-      {isUserTurn && !isSpinning && (playerColor !== null || currentRound > 1) && (
+      {isUserTurn && !isSpinning && playerColor !== null && (
         <button
           className="mt-4 w-full py-4 bg-blue-600 rounded-xl"
           onClick={spin}
