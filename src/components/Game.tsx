@@ -5,6 +5,7 @@ import { useTelegram } from '../context/TelegramContext';
 
 const SEGMENTS = 50;
 const SEGMENT_DEGREE = 360 / SEGMENTS;
+const TIME_LIMIT = 10000; // 10 секунд
 
 const Game: React.FC = () => {
   const [currentRound, setCurrentRound] = useState(1);
@@ -13,6 +14,7 @@ const Game: React.FC = () => {
   const [isSpinning, setIsSpinning] = useState(false);
   const [result, setResult] = useState<'win' | 'lose' | null>(null);
   const [rotationAngle, setRotationAngle] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(TIME_LIMIT);
   const [landedColor, setLandedColor] = useState<'red' | 'black' | null>(null);
   const [bet, setBet] = useState(0);
   const [balance, setBalance] = useState(0);
@@ -26,6 +28,7 @@ const Game: React.FC = () => {
   const { user } = useTelegram();
 
   const spinIntervalRef = useRef<number | null>(null);
+  const timeIntervalRef = useRef<number | null>(null);
 
   useEffect(() => {
     const fetchGameStatus = async () => {
@@ -64,60 +67,87 @@ const Game: React.FC = () => {
     }
   }, [showRoundInfo]);
 
-  const handleColorSelect = async (color: 'red' | 'black') => {
-    if (!user || !lobbyCode) return;
-    setPlayerColor(color);
-    setIsSpinning(true);
-
-    try {
-      const data = await spinWheel(user.id.toString(), lobbyCode, color);
-      const { isWin, angle, wheelColor } = data.result;
-
-      let currentAngle = rotationAngle;
-      spinIntervalRef.current = window.setInterval(() => {
-        if (currentAngle >= angle) {
-          handleStop(isWin, angle, wheelColor);
-        } else {
-          currentAngle += 10;
-          setRotationAngle(currentAngle % 360);
-        }
-      }, 20);
-
-      setBalance(data.result.updatedGame.creator.id === user.id 
-        ? data.result.updatedGame.creator.balance 
-        : data.result.updatedGame.participant.balance);
-      
-      setCreatorWins(data.result.updatedGame.creatorWins);
-      setParticipantWins(data.result.updatedGame.participantWins);
-      setCurrentRound(data.result.updatedGame.currentRound);
-      setGameStatus(data.result.updatedGame.status);
-    } catch (error) {
-      console.error('Error spinning wheel:', error);
-      setIsSpinning(false);
+  useEffect(() => {
+    if (isSpinning) {
+      timeIntervalRef.current = window.setInterval(() => {
+        setTimeLeft((prevTime) => {
+          if (prevTime <= 0) {
+            handleStop();
+            return 0;
+          }
+          return prevTime - 100;
+        });
+      }, 100);
+    } else {
+      if (timeIntervalRef.current) {
+        clearInterval(timeIntervalRef.current);
+      }
     }
+    return () => {
+      if (timeIntervalRef.current) {
+        clearInterval(timeIntervalRef.current);
+      }
+    };
+  }, [isSpinning]);
+
+  const spin = () => {
+    setIsSpinning(true);
+    setTimeLeft(TIME_LIMIT);
+    let angle = rotationAngle;
+    spinIntervalRef.current = window.setInterval(() => {
+      angle += 10;
+      setRotationAngle(angle % 360);
+    }, 20);
   };
 
-  const handleStop = (isWin?: boolean, finalAngle?: number, finalColor?: 'red' | 'black') => {
+  const handleColorSelect = (color: 'red' | 'black') => {
+    setPlayerColor(color);
+    spin();
+  };
+
+  const handleStop = async () => {
+    if (!user || !lobbyCode) return;
     if (spinIntervalRef.current) {
       clearInterval(spinIntervalRef.current);
     }
     setIsSpinning(false);
     
-    if (finalAngle !== undefined && finalColor !== undefined) {
-      setRotationAngle(finalAngle);
-      setLandedColor(finalColor);
-      setResult(isWin ? 'win' : 'lose');
-    } else {
-      const finalAngle = (360 - (rotationAngle % 360)) % 360;
-      const segment = Math.floor(finalAngle / SEGMENT_DEGREE);
-      const isRed = segment % 2 === 0;
-      const finalColor = isRed ? 'red' : 'black';
+    const finalAngle = (360 - (rotationAngle % 360)) % 360;
+    const segment = Math.floor(finalAngle / SEGMENT_DEGREE);
+    const isRed = segment % 2 === 0;
+    const finalColor = isRed ? 'red' : 'black';
+    
+    setLandedColor(finalColor);
+    
+    try {
+      const data = await spinWheel(user.id.toString(), lobbyCode, playerColor || 'red');
+      const { isWin, updatedGame } = data.result;
       
-      setLandedColor(finalColor);
-      setResult(playerColor === finalColor ? 'win' : 'lose');
+      setResult(isWin ? 'win' : 'lose');
+      setBalance(updatedGame.creator.id === user.id 
+        ? updatedGame.creator.balance 
+        : updatedGame.participant.balance);
+      setCreatorWins(updatedGame.creatorWins);
+      setParticipantWins(updatedGame.participantWins);
+      setCurrentRound(updatedGame.currentRound);
+      setGameStatus(updatedGame.status);
+    } catch (error) {
+      console.error('Error updating game status:', error);
     }
+  };
 
-    setShowRoundInfo(true);
+  const handleNextRound = () => {
+    if (currentRound < 3) {
+      setShowRoundInfo(true);
+      setPlayerColor(null);
+      setResult(null);
+      setRotationAngle(0);
+      setIsSpinning(false);
+      setTimeLeft(TIME_LIMIT);
+      setLandedColor(null);
+    } else {
+      setGameStatus('FINISHED');
+    }
   };
 
   const renderWheel = () => {
@@ -193,6 +223,7 @@ const Game: React.FC = () => {
     <div className="flex flex-col h-screen bg-gradient-to-b from-gray-900 to-black text-white p-4">
       <div className="text-center mb-4">
         <div className="text-2xl font-bold">Раунд {currentRound}/3</div>
+        <div className="text-xl mt-2">Время: {(timeLeft / 1000).toFixed(1)} сек</div>
         <div className="text-xl mt-2">Баланс: {balance}$</div>
         <div className="text-xl mt-2">Ставка: {bet}$</div>
         <div className="text-xl mt-2">Ваши победы: {isCreator ? creatorWins : participantWins}</div>
@@ -222,18 +253,27 @@ const Game: React.FC = () => {
         <button
           className={`w-1/2 py-4 rounded-xl ${playerColor === 'red' ? 'bg-red-600' : 'bg-red-800'}`}
           onClick={() => handleColorSelect('red')}
-          disabled={isSpinning}
+          disabled={playerColor !== null || isSpinning}
         >
           Красный
         </button>
         <button
           className={`w-1/2 py-4 rounded-xl ${playerColor === 'black' ? 'bg-gray-800' : 'bg-gray-900'}`}
           onClick={() => handleColorSelect('black')}
-          disabled={isSpinning}
+          disabled={playerColor !== null || isSpinning}
         >
           Черный
         </button>
       </div>
+
+      {isSpinning && (
+        <button
+          className="mt-4 w-full py-4 bg-blue-600 rounded-xl"
+          onClick={handleStop}
+        >
+          Остановить
+        </button>
+      )}
 
       {result && (
         <div className="mt-4 text-center">
@@ -246,6 +286,12 @@ const Game: React.FC = () => {
           <div className="text-xl mb-2">
             Ваш выбор: <span className={playerColor === 'red' ? 'text-red-500' : 'text-gray-300'}>{playerColor}</span>
           </div>
+          <button
+            className="w-full py-4 bg-green-600 rounded-xl"
+            onClick={handleNextRound}
+          >
+            {currentRound < 3 ? 'Следующий раунд' : 'Завершить игру'}
+          </button>
         </div>
       )}
     </div>
