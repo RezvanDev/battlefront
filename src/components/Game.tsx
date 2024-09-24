@@ -94,19 +94,19 @@ const Game: React.FC = () => {
 
       if (updatedGame.status === 'FINISHED') {
         navigate(`/waiting-results/${lobbyCode}`);
+      } else {
+        // Автоматический переход к следующему раунду через 3 секунды
+        setTimeout(() => {
+          setShowRoundInfo(true);
+          setPlayerColor(null);
+          setResult(null);
+          setRotationAngle(0);
+          setLandedColor(null);
+        }, 3000);
       }
     } catch (error) {
       console.error('Error updating game status:', error);
     }
-  };
-
-  const handleNextRound = () => {
-    setShowRoundInfo(true);
-    setPlayerColor(null);
-    setResult(null);
-    setRotationAngle(0);
-    setIsSpinning(false);
-    setLandedColor(null);
   };
 
   const renderWheel = () => {
@@ -216,14 +216,6 @@ const Game: React.FC = () => {
           <div className="text-xl mb-2">
             Ваш выбор: <span className={playerColor === 'red' ? 'text-red-500' : 'text-gray-300'}>{playerColor}</span>
           </div>
-          {currentRound < 3 && (
-            <button
-              className="w-full py-4 bg-green-600 rounded-xl"
-              onClick={handleNextRound}
-            >
-              Следующий раунд
-            </button>
-          )}
         </div>
       )}
     </div>
