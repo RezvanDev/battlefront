@@ -7,6 +7,7 @@ import InviteGame from './components/InviteGame';
 import JoinGame from './components/JoinGame';
 import WaitingRoom from './components/WaitingRoom';
 import Game from './components/Game';
+import WaitingResults from './components/WaitingResults';
 
 const App: React.FC = () => {
   return (
@@ -33,6 +34,7 @@ const AppContent: React.FC = () => {
       <Route path="/join-game" element={<JoinGame />} />
       <Route path="/waiting-room/:lobbyCode" element={<WaitingRoom />} />
       <Route path="/game/:lobbyCode" element={<Game />} />
+      <Route path="/waiting-results/:lobbyCode" element={<WaitingResults />} />
     </Routes>
   );
 };
