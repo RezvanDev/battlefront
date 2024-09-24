@@ -10,6 +10,7 @@ const Game: React.FC = () => {
   const [currentRound, setCurrentRound] = useState(1);
   const [showRoundInfo, setShowRoundInfo] = useState(true);
   const [playerColor, setPlayerColor] = useState<'red' | 'black' | null>(null);
+  const [opponentColor, setOpponentColor] = useState<'red' | 'black' | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
   const [result, setResult] = useState<'win' | 'lose' | null>(null);
   const [rotationAngle, setRotationAngle] = useState(0);
@@ -38,9 +39,16 @@ const Game: React.FC = () => {
         setParticipantWins(data.game.participantWins);
         setCurrentRound(data.game.currentRound);
         setIsCreatorTurn(data.game.currentRound % 2 !== 0);
-        setPlayerColor(data.game.creatorColor);
         setIsCreator(data.game.creator.id === user.id);
         
+        if (isCreator) {
+          setPlayerColor(data.game.creatorColor);
+          setOpponentColor(data.game.creatorColor === 'red' ? 'black' : 'red');
+        } else {
+          setOpponentColor(data.game.creatorColor);
+          setPlayerColor(data.game.creatorColor === 'red' ? 'black' : 'red');
+        }
+
         if (data.game.status === 'FINISHED') {
           navigate(`/waiting-results/${lobbyCode}`);
         }
@@ -53,7 +61,7 @@ const Game: React.FC = () => {
     const interval = setInterval(fetchGameStatus, 5000);
 
     return () => clearInterval(interval);
-  }, [lobbyCode, user, navigate]);
+  }, [lobbyCode, user, navigate, isCreator]);
 
   useEffect(() => {
     if (showRoundInfo) {
@@ -99,6 +107,7 @@ const Game: React.FC = () => {
     try {
       await chooseColor(user.id.toString(), lobbyCode, color);
       setPlayerColor(color);
+      setOpponentColor(color === 'red' ? 'black' : 'red');
     } catch (error) {
       console.error('Error selecting color:', error);
     }
@@ -201,6 +210,12 @@ const Game: React.FC = () => {
         <div className="text-xl mt-2">
           {isUserTurn ? 'Ваш ход' : 'Ход противника'}
         </div>
+        <div className="text-xl mt-2">
+          Ваш цвет: <span className={playerColor === 'red' ? 'text-red-500' : 'text-gray-300'}>{playerColor}</span>
+        </div>
+        <div className="text-xl mt-2">
+          Цвет противника: <span className={opponentColor === 'red' ? 'text-red-500' : 'text-gray-300'}>{opponentColor}</span>
+        </div>
       </div>
 
       <div className="flex-grow flex flex-col items-center justify-center relative">
@@ -222,7 +237,7 @@ const Game: React.FC = () => {
         </div>
       </div>
 
-      {isCreator && currentRound === 1 && playerColor === null && (
+      {isUserTurn && currentRound === 1 && playerColor === null && (
         <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4 mt-4">
           <button
             className="w-full sm:w-1/2 py-4 rounded-xl bg-red-600"
