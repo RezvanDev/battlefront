@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-export interface TelegramUser {
+interface TelegramUser {
   id: number;
   username?: string;
 }
@@ -8,6 +8,7 @@ export interface TelegramUser {
 interface TelegramContextType {
   tg: any;
   user: TelegramUser | null;
+  isLoading: boolean;
 }
 
 const TelegramContext = createContext<TelegramContextType | undefined>(undefined);
@@ -15,22 +16,44 @@ const TelegramContext = createContext<TelegramContextType | undefined>(undefined
 export const TelegramProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [tg, setTg] = useState<any>(null);
   const [user, setUser] = useState<TelegramUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const telegram = (window as any).Telegram?.WebApp;
-    if (telegram) {
-      setTg(telegram);
-      if (telegram.initDataUnsafe?.user) {
+    const initTelegram = () => {
+      const telegram = (window as any).Telegram?.WebApp;
+      if (telegram) {
+        setTg(telegram);
+        if (telegram.initDataUnsafe?.user) {
+          setUser({
+            id: telegram.initDataUnsafe.user.id,
+            username: telegram.initDataUnsafe.user.username,
+          });
+        } else {
+          console.warn('Telegram user data not available');
+          // Используем mock-данные, если реальные данные недоступны
+          setUser({
+            id: 12345,
+            username: 'johndoe'
+          });
+        }
+      } else {
+        console.warn('Telegram WebApp not available');
+        // Используем mock-данные, если Telegram WebApp недоступен
         setUser({
-          id: telegram.initDataUnsafe.user.id,
-          username: telegram.initDataUnsafe.user.username,
+          id: 12345,
+          username: 'johndoe'
         });
       }
-    }
+      setIsLoading(false);
+    };
+
+    // Попытка инициализации через 1 секунду, если Telegram WebApp не загрузился сразу
+    const timeoutId = setTimeout(initTelegram, 1000);
+    return () => clearTimeout(timeoutId);
   }, []);
 
   return (
-    <TelegramContext.Provider value={{ tg, user }}>
+    <TelegramContext.Provider value={{ tg, user, isLoading }}>
       {children}
     </TelegramContext.Provider>
   );
