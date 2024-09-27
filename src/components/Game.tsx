@@ -47,11 +47,15 @@ const Game: React.FC = () => {
         setGame(response.game);
         if (response.spinResult) {
           setIsSpinning(true);
+          setSpinResult(null);
           setTimeout(() => {
             setSpinResult(response.spinResult);
             setIsSpinning(false);
-            setSelectedColor(null);
-            fetchGameStatus();
+            setTimeout(() => {
+              setSelectedColor(null);
+              setSpinResult(null);
+              fetchGameStatus();
+            }, 2000);
           }, 3000);
         }
       } else {
@@ -82,8 +86,8 @@ const Game: React.FC = () => {
   return (
     <div className="flex flex-col h-screen bg-gradient-to-b from-gray-900 to-black text-white p-4">
       <div className="text-center mb-4">
-        <h1 className="text-2xl font-bold">Раунд {game.currentRound}/5</h1>
-        <p>Ставка: {game.bet}</p>
+        <h1 className="text-2xl font-bold">Раунд {game.currentRound}</h1>
+        <p>Ставка: {game.bet}$</p>
       </div>
 
       <div className="flex justify-between mb-4">
@@ -112,21 +116,21 @@ const Game: React.FC = () => {
           <button
             className={`w-1/3 py-4 rounded-xl ${selectedColor === 'red' ? 'bg-red-600' : 'bg-red-800'}`}
             onClick={() => handleColorSelect('red')}
-            disabled={!!selectedColor || game.currentRound > 5}
+            disabled={!!selectedColor || Math.max(game.creatorWins, game.participantWins) >= 3}
           >
             Красный
           </button>
           <button
             className={`w-1/3 py-4 rounded-xl ${selectedColor === 'black' ? 'bg-gray-800' : 'bg-gray-900'}`}
             onClick={() => handleColorSelect('black')}
-            disabled={!!selectedColor || game.currentRound > 5}
+            disabled={!!selectedColor || Math.max(game.creatorWins, game.participantWins) >= 3}
           >
             Черный
           </button>
         </div>
       )}
 
-      {game.currentRound > 5 && (
+      {Math.max(game.creatorWins, game.participantWins) >= 3 && (
         <div className="text-center mt-8">
           <h2 className="text-3xl font-bold mb-4">Игра завершена!</h2>
           <p>Ожидание результатов...</p>
