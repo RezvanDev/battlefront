@@ -12,24 +12,26 @@ const Game: React.FC = () => {
   const [isSpinning, setIsSpinning] = useState(false);
   const [spinResult, setSpinResult] = useState<string | null>(null);
   const [showRoundInfo, setShowRoundInfo] = useState(false);
+  const [roundResult, setRoundResult] = useState<string | null>(null);
 
   const fetchGameStatus = useCallback(async () => {
     if (lobbyCode) {
-      const response = await getGameStatus(lobbyCode);
-      if (response.success) {
-        const newGame = response.game;
-        setGame(newGame);
-        if (newGame.status === 'FINISHED') {
-          navigate(`/results/${lobbyCode}`);
-        } else if (newGame.currentRound !== game?.currentRound) {
-          setShowRoundInfo(true);
-          setTimeout(() => setShowRoundInfo(false), 2000);
+      try {
+        const response = await getGameStatus(lobbyCode);
+        if (response.success) {
+          const newGame = response.game;
+          setGame(newGame);
+          if (newGame.status === 'FINISHED') {
+            navigate(`/results/${lobbyCode}`);
+          }
+        } else {
+          console.error('Ошибка при получении статуса игры:', response.error);
         }
-      } else {
-        console.error('Ошибка при получении статуса игры:', response.error);
+      } catch (error) {
+        console.error('Ошибка при загрузке статуса игры:', error);
       }
     }
-  }, [lobbyCode, navigate, game]);
+  }, [lobbyCode, navigate]);
 
   useEffect(() => {
     fetchGameStatus();
@@ -47,14 +49,22 @@ const Game: React.FC = () => {
         setGame(response.game);
         if (response.spinResult) {
           setIsSpinning(true);
-          setSpinResult(null);
           setTimeout(() => {
             setSpinResult(response.spinResult);
             setIsSpinning(false);
             setTimeout(() => {
-              setSelectedColor(null);
-              setSpinResult(null);
-              fetchGameStatus();
+              const winner = response.game.creatorColor === response.spinResult ? 'creator' : 'participant';
+              setRoundResult(winner === 'creator' ? 'Создатель выиграл раунд!' : 'Участник выиграл раунд!');
+              setTimeout(() => {
+                setRoundResult(null);
+                setSpinResult(null);
+                setSelectedColor(null);
+                setShowRoundInfo(true);
+                setTimeout(() => {
+                  setShowRoundInfo(false);
+                  fetchGameStatus();
+                }, 2000);
+              }, 2000);
             }, 2000);
           }, 3000);
         }
@@ -110,6 +120,7 @@ const Game: React.FC = () => {
         <div className="text-center my-8">
           <div className={`w-32 h-32 rounded-full mx-auto ${spinResult === 'red' ? 'bg-red-600' : 'bg-black'}`}></div>
           <p className="text-3xl mt-4">Результат: {spinResult === 'red' ? 'Красный' : 'Черный'}</p>
+          {roundResult && <p className="text-2xl mt-4">{roundResult}</p>}
         </div>
       ) : (
         <div className="flex justify-center space-x-4 my-8">
