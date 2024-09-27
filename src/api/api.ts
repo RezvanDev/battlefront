@@ -17,10 +17,8 @@ export const createGame = async (telegramId: string, bet: number) => {
 };
 
 export const joinGame = async (telegramId: string, lobbyCode: string) => {
-  console.log(`Попытка присоединиться к игре. TelegramId: ${telegramId}, LobbyCode: ${lobbyCode}`);
   try {
     const response = await api.post(`/game/${telegramId}/join`, { lobbyCode });
-    console.log('Ответ сервера при присоединении к игре:', response.data);
     return response.data;
   } catch (error) {
     console.error('Ошибка при присоединении к игре:', error);
@@ -33,23 +31,19 @@ export const getGameStatus = async (lobbyCode: string) => {
   return response.data;
 };
 
-export const spinWheel = async (telegramId: string, lobbyCode: string) => {
-  const response = await api.post(`/game/${telegramId}/${lobbyCode}/spin`);
+export const chooseColor = async (telegramId: string, lobbyCode: string, selectedColor: 'red' | 'black') => {
+  const response = await api.post(`/game/${telegramId}/${lobbyCode}/choose-color`, { selectedColor });
   return response.data;
 };
 
 export const getBalance = async (telegramId: string) => {
   const url = `/users/${telegramId}/balance`;
-  console.log(`Запрос баланса для пользователя ${telegramId}. URL: ${API_URL}${url}`);
   try {
     const response = await api.get(url);
-    console.log('Ответ сервера:', response.data);
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
       console.error('Ошибка при загрузке баланса:', error.response?.data || error.message);
-      console.error('Статус ошибки:', error.response?.status);
-      console.error('Заголовки ответа:', error.response?.headers);
       return {
         success: false,
         error: error.response?.data?.error || 'Ошибка при загрузке баланса',
@@ -59,11 +53,6 @@ export const getBalance = async (telegramId: string) => {
     console.error('Неожиданная ошибка:', error);
     return { success: false, error: 'Неизвестная ошибка' };
   }
-};
-
-export const chooseColor = async (telegramId: string, lobbyCode: string, selectedColor: 'red' | 'black') => {
-  const response = await api.post(`/game/${telegramId}/${lobbyCode}/choose-color`, { selectedColor });
-  return response.data;
 };
 
 export default api;
