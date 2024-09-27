@@ -34,7 +34,7 @@ const AppContent: React.FC = () => {
       <Route path="/join-game" element={<JoinGame />} />
       <Route path="/waiting-room/:lobbyCode" element={<WaitingRoom />} />
       <Route path="/game/:lobbyCode" element={<Game />} />
-      <Route path="/waiting-results/:lobbyCode" element={<WaitingResults />} />
+      <Route path="/results/:lobbyCode" element={<WaitingResults />} />
     </Routes>
   );
 };

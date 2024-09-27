@@ -12,8 +12,13 @@ const api = axios.create({
 });
 
 export const createGame = async (telegramId: string, bet: number) => {
-  const response = await api.post(`/game/${telegramId}/create`, { bet });
-  return response.data;
+  try {
+    const response = await api.post(`/game/${telegramId}/create`, { bet });
+    return response.data;
+  } catch (error) {
+    console.error('Ошибка при создании игры:', error);
+    throw error;
+  }
 };
 
 export const joinGame = async (telegramId: string, lobbyCode: string) => {
@@ -27,31 +32,32 @@ export const joinGame = async (telegramId: string, lobbyCode: string) => {
 };
 
 export const getGameStatus = async (lobbyCode: string) => {
-  const response = await api.get(`/game/${lobbyCode}/status`);
-  return response.data;
+  try {
+    const response = await api.get(`/game/${lobbyCode}/status`);
+    return response.data;
+  } catch (error) {
+    console.error('Ошибка при получении статуса игры:', error);
+    throw error;
+  }
 };
 
 export const chooseColor = async (telegramId: string, lobbyCode: string, selectedColor: 'red' | 'black') => {
-  const response = await api.post(`/game/${telegramId}/${lobbyCode}/choose-color`, { selectedColor });
-  return response.data;
+  try {
+    const response = await api.post(`/game/${telegramId}/${lobbyCode}/choose-color`, { selectedColor });
+    return response.data;
+  } catch (error) {
+    console.error('Ошибка при выборе цвета:', error);
+    throw error;
+  }
 };
 
 export const getBalance = async (telegramId: string) => {
-  const url = `/users/${telegramId}/balance`;
   try {
-    const response = await api.get(url);
+    const response = await api.get(`/users/${telegramId}/balance`);
     return response.data;
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      console.error('Ошибка при загрузке баланса:', error.response?.data || error.message);
-      return {
-        success: false,
-        error: error.response?.data?.error || 'Ошибка при загрузке баланса',
-        status: error.response?.status,
-      };
-    }
-    console.error('Неожиданная ошибка:', error);
-    return { success: false, error: 'Неизвестная ошибка' };
+    console.error('Ошибка при загрузке баланса:', error);
+    throw error;
   }
 };
 

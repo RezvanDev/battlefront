@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getGameStatus, chooseColor } from '../api/api';
 import { useTelegram } from '../context/TelegramContext';
@@ -12,23 +12,25 @@ const Game: React.FC = () => {
   const [isSpinning, setIsSpinning] = useState(false);
   const [spinResult, setSpinResult] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchGameStatus = async () => {
-      if (lobbyCode) {
-        const response = await getGameStatus(lobbyCode);
-        if (response.success) {
-          setGame(response.game);
-        } else {
-          console.error('Ошибка при получении статуса игры:', response.error);
+  const fetchGameStatus = useCallback(async () => {
+    if (lobbyCode) {
+      const response = await getGameStatus(lobbyCode);
+      if (response.success) {
+        setGame(response.game);
+        if (response.game.status === 'FINISHED') {
+          navigate(`/results/${lobbyCode}`);
         }
+      } else {
+        console.error('Ошибка при получении статуса игры:', response.error);
       }
-    };
+    }
+  }, [lobbyCode, navigate]);
 
+  useEffect(() => {
     fetchGameStatus();
-    const interval = setInterval(fetchGameStatus, 5000); // Опрос каждые 5 секунд
-
+    const interval = setInterval(fetchGameStatus, 2000); // Опрос каждые 2 секунды
     return () => clearInterval(interval);
-  }, [lobbyCode]);
+  }, [fetchGameStatus]);
 
   const handleColorSelect = async (color: 'red' | 'black') => {
     if (!user || !lobbyCode) return;
@@ -44,6 +46,7 @@ const Game: React.FC = () => {
           setTimeout(() => {
             setIsSpinning(false);
             setSelectedColor(null);
+            fetchGameStatus(); // Обновляем статус игры после завершения анимации
           }, 3000); // Имитация вращения рулетки
         }
       } else {
@@ -93,31 +96,24 @@ const Game: React.FC = () => {
           <button
             className={`w-1/3 py-4 rounded-xl ${selectedColor === 'red' ? 'bg-red-600' : 'bg-red-800'}`}
             onClick={() => handleColorSelect('red')}
-            disabled={!!selectedColor}
+            disabled={!!selectedColor || game.currentRound > 5}
           >
             Красный
           </button>
           <button
             className={`w-1/3 py-4 rounded-xl ${selectedColor === 'black' ? 'bg-gray-800' : 'bg-gray-900'}`}
             onClick={() => handleColorSelect('black')}
-            disabled={!!selectedColor}
+            disabled={!!selectedColor || game.currentRound > 5}
           >
             Черный
           </button>
         </div>
       )}
 
-      {game.status === 'FINISHED' && (
+      {game.currentRound > 5 && (
         <div className="text-center mt-8">
-          <h2 className="text-3xl font-bold mb-4">
-            {game.creatorWins === 3 ? 'Создатель выиграл!' : 'Участник выиграл!'}
-          </h2>
-          <button
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-            onClick={() => navigate('/')}
-          >
-            Вернуться на главную
-          </button>
+          <h2 className="text-3xl font-bold mb-4">Игра завершена!</h2>
+          <p>Ожидание результатов...</p>
         </div>
       )}
     </div>
