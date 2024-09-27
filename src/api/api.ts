@@ -1,32 +1,26 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://8d48-202-79-184-241.ngrok-free.app/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://5389-202-79-184-241.ngrok-free.app/api';
 
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
     'ngrok-skip-browser-warning': 'true',
-    'Cache-Control': 'no-cache',
-    'Pragma': 'no-cache',
-    'Expires': '0',
   },
   withCredentials: true,
 });
 
 export const createGame = async (telegramId: string, bet: number) => {
-  try {
-    const response = await api.post(`/game/${telegramId}/create`, { bet });
-    return response.data;
-  } catch (error) {
-    console.error('Ошибка при создании игры:', error);
-    throw error;
-  }
+  const response = await api.post(`/game/${telegramId}/create`, { bet });
+  return response.data;
 };
 
 export const joinGame = async (telegramId: string, lobbyCode: string) => {
+  console.log(`Попытка присоединиться к игре. TelegramId: ${telegramId}, LobbyCode: ${lobbyCode}`);
   try {
     const response = await api.post(`/game/${telegramId}/join`, { lobbyCode });
+    console.log('Ответ сервера при присоединении к игре:', response.data);
     return response.data;
   } catch (error) {
     console.error('Ошибка при присоединении к игре:', error);
@@ -35,35 +29,41 @@ export const joinGame = async (telegramId: string, lobbyCode: string) => {
 };
 
 export const getGameStatus = async (lobbyCode: string) => {
+  const response = await api.get(`/game/${lobbyCode}/status`);
+  return response.data;
+};
+
+export const spinWheel = async (telegramId: string, lobbyCode: string) => {
+  const response = await api.post(`/game/${telegramId}/${lobbyCode}/spin`);
+  return response.data;
+};
+
+export const getBalance = async (telegramId: string) => {
+  const url = `/users/${telegramId}/balance`;
+  console.log(`Запрос баланса для пользователя ${telegramId}. URL: ${API_URL}${url}`);
   try {
-    const response = await api.get(`/game/${lobbyCode}/status`, {
-      params: { _: new Date().getTime() } // Добавляем timestamp к запросу
-    });
+    const response = await api.get(url);
+    console.log('Ответ сервера:', response.data);
     return response.data;
   } catch (error) {
-    console.error('Ошибка при получении статуса игры:', error);
-    throw error;
+    if (axios.isAxiosError(error)) {
+      console.error('Ошибка при загрузке баланса:', error.response?.data || error.message);
+      console.error('Статус ошибки:', error.response?.status);
+      console.error('Заголовки ответа:', error.response?.headers);
+      return {
+        success: false,
+        error: error.response?.data?.error || 'Ошибка при загрузке баланса',
+        status: error.response?.status,
+      };
+    }
+    console.error('Неожиданная ошибка:', error);
+    return { success: false, error: 'Неизвестная ошибка' };
   }
 };
 
 export const chooseColor = async (telegramId: string, lobbyCode: string, selectedColor: 'red' | 'black') => {
-  try {
-    const response = await api.post(`/game/${telegramId}/${lobbyCode}/choose-color`, { selectedColor });
-    return response.data;
-  } catch (error) {
-    console.error('Ошибка при выборе цвета:', error);
-    throw error;
-  }
-};
-
-export const getBalance = async (telegramId: string) => {
-  try {
-    const response = await api.get(`/users/${telegramId}/balance`);
-    return response.data;
-  } catch (error) {
-    console.error('Ошибка при загрузке баланса:', error);
-    throw error;
-  }
+  const response = await api.post(`/game/${telegramId}/${lobbyCode}/choose-color`, { selectedColor });
+  return response.data;
 };
 
 export default api;
