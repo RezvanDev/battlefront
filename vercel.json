@@ -1,7 +1,38 @@
 {
-    "buildCommand": "npm run build",
-    "outputDirectory": "dist",
-    "devCommand": "npm run dev",
-    "installCommand": "npm install",
-    "framework": "vite"
-  }
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist",
+        "buildCommand": "npm run build",
+        "devCommand": "npm run dev",
+        "installCommand": "npm install"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1"
+    },
+    {
+      "src": "/favicon.ico",
+      "dest": "/favicon.ico"
+    },
+    {
+      "src": "/manifest.json",
+      "dest": "/manifest.json"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ],
+  "framework": "vite"
+}
