@@ -3,29 +3,40 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getGameStatus, chooseColor } from '../api/api';
 import { useTelegram } from '../context/TelegramContext';
 
+interface GameData {
+  id: string;
+  lobbyCode: string;
+  creator: { id: string; username: string };
+  participant: { id: string; username: string } | null;
+  status: 'WAITING' | 'PLAYING' | 'FINISHED';
+  bet: number;
+  creatorWins: number;
+  participantWins: number;
+  currentRound: number;
+  creatorColor: 'red' | 'black' | null;
+  participantColor: 'red' | 'black' | null;
+  lastSpinResult: 'red' | 'black' | null;
+}
+
 const Game: React.FC = () => {
   const { lobbyCode } = useParams<{ lobbyCode: string }>();
   const navigate = useNavigate();
   const { user } = useTelegram();
-  const [game, setGame] = useState<any>(null);
+  const [game, setGame] = useState<GameData | null>(null);
   const [selectedColor, setSelectedColor] = useState<'red' | 'black' | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
-  const [spinResult, setSpinResult] = useState<string | null>(null);
+  const [spinResult, setSpinResult] = useState<'red' | 'black' | null>(null);
   const [showRoundInfo, setShowRoundInfo] = useState(false);
-  const [roundResult, setRoundResult] = useState<string | null>(null);
 
   const fetchGameStatus = useCallback(async () => {
     if (lobbyCode) {
       try {
         const response = await getGameStatus(lobbyCode);
         if (response.success) {
-          const newGame = response.game;
-          setGame(newGame);
-          if (newGame.status === 'FINISHED') {
+          setGame(response.game);
+          if (response.game.status === 'FINISHED') {
             navigate(`/results/${lobbyCode}`);
           }
-        } else {
-          console.error('Ошибка при получении статуса игры:', response.error);
         }
       } catch (error) {
         console.error('Ошибка при загрузке статуса игры:', error);
@@ -35,7 +46,7 @@ const Game: React.FC = () => {
 
   useEffect(() => {
     fetchGameStatus();
-    const interval = setInterval(fetchGameStatus, 2000);
+    const interval = setInterval(fetchGameStatus, 1000);
     return () => clearInterval(interval);
   }, [fetchGameStatus]);
 
@@ -53,23 +64,16 @@ const Game: React.FC = () => {
             setSpinResult(response.spinResult);
             setIsSpinning(false);
             setTimeout(() => {
-              const winner = response.game.creatorColor === response.spinResult ? 'creator' : 'participant';
-              setRoundResult(winner === 'creator' ? 'Создатель выиграл раунд!' : 'Участник выиграл раунд!');
+              setSpinResult(null);
+              setSelectedColor(null);
+              setShowRoundInfo(true);
               setTimeout(() => {
-                setRoundResult(null);
-                setSpinResult(null);
-                setSelectedColor(null);
-                setShowRoundInfo(true);
-                setTimeout(() => {
-                  setShowRoundInfo(false);
-                  fetchGameStatus();
-                }, 2000);
+                setShowRoundInfo(false);
+                fetchGameStatus();
               }, 2000);
             }, 2000);
           }, 3000);
         }
-      } else {
-        console.error('Ошибка при выборе цвета:', response.error);
       }
     } catch (error) {
       console.error('Ошибка при отправке выбора цвета:', error);
@@ -80,14 +84,14 @@ const Game: React.FC = () => {
     return <div>Загрузка игры...</div>;
   }
 
-  const isCreator = game.creator.id === user?.id;
+  const isCreator = user ? game.creator.id === user.id.toString() : false;
   const currentPlayer = isCreator ? game.creator : game.participant;
   const opponentPlayer = isCreator ? game.participant : game.creator;
 
   if (showRoundInfo) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-gradient-to-b from-gray-900 to-black text-white">
-        <h1 className="text-6xl font-bold mb-4">{game.currentRound}/5</h1>
+        <h1 className="text-6xl font-bold mb-4">{game.currentRound}</h1>
         <p className="text-3xl">Раунд</p>
       </div>
     );
@@ -102,7 +106,7 @@ const Game: React.FC = () => {
 
       <div className="flex justify-between mb-4">
         <div>
-          <p>{currentPlayer.username || 'Вы'}</p>
+          <p>{currentPlayer?.username || 'Вы'}</p>
           <p>Очки: {isCreator ? game.creatorWins : game.participantWins}</p>
         </div>
         <div>
@@ -120,7 +124,6 @@ const Game: React.FC = () => {
         <div className="text-center my-8">
           <div className={`w-32 h-32 rounded-full mx-auto ${spinResult === 'red' ? 'bg-red-600' : 'bg-black'}`}></div>
           <p className="text-3xl mt-4">Результат: {spinResult === 'red' ? 'Красный' : 'Черный'}</p>
-          {roundResult && <p className="text-2xl mt-4">{roundResult}</p>}
         </div>
       ) : (
         <div className="flex justify-center space-x-4 my-8">

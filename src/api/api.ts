@@ -7,6 +7,9 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
     'ngrok-skip-browser-warning': 'true',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
+    'Expires': '0',
   },
   withCredentials: true,
 });
@@ -33,7 +36,9 @@ export const joinGame = async (telegramId: string, lobbyCode: string) => {
 
 export const getGameStatus = async (lobbyCode: string) => {
   try {
-    const response = await api.get(`/game/${lobbyCode}/status`);
+    const response = await api.get(`/game/${lobbyCode}/status`, {
+      params: { _: new Date().getTime() } // Добавляем timestamp к запросу
+    });
     return response.data;
   } catch (error) {
     console.error('Ошибка при получении статуса игры:', error);
