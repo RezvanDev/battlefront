@@ -33,8 +33,8 @@ export const getGameStatus = async (lobbyCode: string) => {
   return response.data;
 };
 
-export const spinWheel = async (telegramId: string, lobbyCode: string) => {
-  const response = await api.post(`/game/${telegramId}/${lobbyCode}/spin`);
+export const chooseColor = async (telegramId: string, lobbyCode: string, selectedColor: 'red' | 'black') => {
+  const response = await api.post(`/game/${telegramId}/${lobbyCode}/choose-color`, { selectedColor });
   return response.data;
 };
 
@@ -59,11 +59,6 @@ export const getBalance = async (telegramId: string) => {
     console.error('Неожиданная ошибка:', error);
     return { success: false, error: 'Неизвестная ошибка' };
   }
-};
-
-export const chooseColor = async (telegramId: string, lobbyCode: string, selectedColor: 'red' | 'black') => {
-  const response = await api.post(`/game/${telegramId}/${lobbyCode}/choose-color`, { selectedColor });
-  return response.data;
 };
 
 export default api;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getGameStatus, chooseColor, spinWheel } from '../api/api';
+import { getGameStatus, chooseColor } from '../api/api';
 import { useTelegram } from '../context/TelegramContext';
 
 const SEGMENTS = 50;
@@ -13,11 +13,8 @@ const Game: React.FC = () => {
   const { user } = useTelegram();
   const [game, setGame] = useState<any>(null);
   const [playerColor, setPlayerColor] = useState<'red' | 'black' | null>(null);
-  const [opponentColor, setOpponentColor] = useState<'red' | 'black' | null>(null);
-  const [isSpinning, setIsSpinning] = useState(false);
-  const [rotationAngle, setRotationAngle] = useState(0);
   const [timeLeft, setTimeLeft] = useState(TIME_LIMIT);
-  const [landedColor, setLandedColor] = useState<'red' | 'black' | null>(null);
+  const [rotationAngle, setRotationAngle] = useState(0);
 
   const fetchGameStatus = useCallback(async () => {
     if (!lobbyCode) return;
@@ -40,71 +37,56 @@ const Game: React.FC = () => {
   }, [fetchGameStatus]);
 
   useEffect(() => {
-    if (game) {
-      const isCreator = user?.id === game.creator.id;
-      setPlayerColor(isCreator ? game.creatorColor : game.participantColor);
-      setOpponentColor(isCreator ? game.participantColor : game.creatorColor);
+    if (game && game.status === 'PLAYING') {
+      const currentTime = new Date();
+      const roundStartTime = new Date(game.roundStartTime);
+      const elapsedTime = currentTime.getTime() - roundStartTime.getTime();
+      const remainingTime = Math.max(0, TIME_LIMIT - elapsedTime);
+      setTimeLeft(remainingTime);
 
-      if (game.creatorColor && game.participantColor && !isSpinning) {
-        handleSpin();
-      }
-    }
-  }, [game, user, isSpinning]);
-
-  useEffect(() => {
-    if (!playerColor && !isSpinning && game?.status === 'PLAYING') {
       const timer = setInterval(() => {
         setTimeLeft((prevTime) => {
-          if (prevTime <= 0) {
+          const newTime = prevTime - 1000;
+          if (newTime <= 0) {
             clearInterval(timer);
-            handleColorSelect(Math.random() < 0.5 ? 'red' : 'black');
             return 0;
           }
-          return prevTime - 1000;
+          return newTime;
         });
       }, 1000);
 
       return () => clearInterval(timer);
     }
-  }, [playerColor, isSpinning, game]);
+  }, [game]);
 
   const handleColorSelect = async (color: 'red' | 'black') => {
     if (!user?.id || !lobbyCode) return;
     try {
       await chooseColor(user.id.toString(), lobbyCode, color);
       setPlayerColor(color);
-      setTimeLeft(TIME_LIMIT);
       fetchGameStatus();
     } catch (error) {
       console.error('Error choosing color:', error);
     }
   };
 
-  const handleSpin = async () => {
-    if (!user?.id || !lobbyCode) return;
-    setIsSpinning(true);
-    try {
-      const result = await spinWheel(user.id.toString(), lobbyCode);
-      animateSpin(result.result.wheelColor);
-    } catch (error) {
-      console.error('Error spinning wheel:', error);
-      setIsSpinning(false);
-    }
-  };
-
-  const animateSpin = (finalColor: 'red' | 'black') => {
+  const animateSpin = useCallback(() => {
     let angle = 0;
     const spinInterval = setInterval(() => {
       angle += 10;
       setRotationAngle(angle % 360);
       if (angle >= 720 + Math.random() * 360) {
         clearInterval(spinInterval);
-        setIsSpinning(false);
-        setLandedColor(finalColor);
-        fetchGameStatus();
       }
     }, 20);
-  };
+  }, []);
+
+  useEffect(() => {
+    if (game && game.lastSpinResult && game.lastSpinResult !== playerColor) {
+      animateSpin();
+      setPlayerColor(null);
+    }
+  }, [game, playerColor, animateSpin]);
 
   const renderWheel = () => {
     const segments = [];
@@ -138,6 +120,10 @@ const Game: React.FC = () => {
     return <div>Loading...</div>;
   }
 
+  const isCreator = user?.id === game.creator.id;
+  const currentPlayer = isCreator ? game.creator : game.participant;
+  const opponentPlayer = isCreator ? game.participant : game.creator;
+
   return (
     <div className="flex flex-col h-screen bg-gradient-to-b from-gray-900 to-black text-white p-4">
       <div className="text-center mb-4">
@@ -147,12 +133,12 @@ const Game: React.FC = () => {
 
       <div className="flex justify-between mb-4">
         <div>
-          <p>Вы: {game.creator.id === user?.id ? game.creatorWins : game.participantWins} побед</p>
+          <p>Вы: {currentPlayer.wins} побед</p>
           <p>Цвет: {playerColor || 'Не выбран'}</p>
         </div>
         <div>
-          <p>Оппонент: {game.creator.id === user?.id ? game.participantWins : game.creatorWins} побед</p>
-          <p>Цвет: {opponentColor || 'Не выбран'}</p>
+          <p>Оппонент: {opponentPlayer?.wins} побед</p>
+          <p>Цвет: {isCreator ? game.participantColor : game.creatorColor || 'Не выбран'}</p>
         </div>
       </div>
 
@@ -175,7 +161,7 @@ const Game: React.FC = () => {
         </div>
       </div>
 
-      {!playerColor && !isSpinning && game.status === 'PLAYING' && (
+      {game.status === 'PLAYING' && !playerColor && (
         <div className="flex justify-center space-x-4 mt-4">
           <button
             className="w-1/2 py-4 rounded-xl bg-red-600"
@@ -192,10 +178,10 @@ const Game: React.FC = () => {
         </div>
       )}
 
-      {landedColor && (
+      {game.lastSpinResult && (
         <div className="mt-4 text-center">
           <div className="text-2xl font-bold mb-2">
-            Выпал цвет: <span className={landedColor === 'red' ? 'text-red-500' : 'text-gray-300'}>{landedColor}</span>
+            Выпал цвет: <span className={game.lastSpinResult === 'red' ? 'text-red-500' : 'text-gray-300'}>{game.lastSpinResult}</span>
           </div>
         </div>
       )}
