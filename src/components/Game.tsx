@@ -1,15 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { getGameStatus, chooseColor, spinWheel } from '../api/api';
 
 const SEGMENTS = 50;
 const SEGMENT_DEGREE = 360 / SEGMENTS;
 const TIME_LIMIT = 10000; // 10 секунд
 
 const Game: React.FC = () => {
-  const [currentRound, setCurrentRound] = useState(1);
-  const [showRoundInfo, setShowRoundInfo] = useState(true);
+  const { lobbyCode } = useParams<{ lobbyCode: string }>();
+  const navigate = useNavigate();
+  const [game, setGame] = useState<any>(null);
   const [playerColor, setPlayerColor] = useState<'red' | 'black' | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
-  const [result, setResult] = useState<'win' | 'lose' | null>(null);
   const [rotationAngle, setRotationAngle] = useState(0);
   const [timeLeft, setTimeLeft] = useState(TIME_LIMIT);
   const [landedColor, setLandedColor] = useState<'red' | 'black' | null>(null);
@@ -17,14 +19,25 @@ const Game: React.FC = () => {
   const spinIntervalRef = useRef<number | null>(null);
   const timeIntervalRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    if (showRoundInfo) {
-      const timer = setTimeout(() => {
-        setShowRoundInfo(false);
-      }, 2000);
-      return () => clearTimeout(timer);
+  const fetchGameStatus = useCallback(async () => {
+    if (!lobbyCode) return;
+    try {
+      const data = await getGameStatus(lobbyCode);
+      setGame(data.game);
+      
+      if (data.game.status === 'FINISHED') {
+        navigate(`/results/${lobbyCode}`);
+      }
+    } catch (error) {
+      console.error('Error fetching game status:', error);
     }
-  }, [showRoundInfo]);
+  }, [lobbyCode, navigate]);
+
+  useEffect(() => {
+    fetchGameStatus();
+    const interval = setInterval(fetchGameStatus, 1000);
+    return () => clearInterval(interval);
+  }, [fetchGameStatus]);
 
   useEffect(() => {
     if (isSpinning) {
@@ -49,7 +62,7 @@ const Game: React.FC = () => {
     };
   }, [isSpinning]);
 
-  const spin = () => {
+  const handleSpin = useCallback(async () => {
     setIsSpinning(true);
     setTimeLeft(TIME_LIMIT);
     let angle = rotationAngle;
@@ -57,11 +70,27 @@ const Game: React.FC = () => {
       angle += 10;
       setRotationAngle(angle % 360);
     }, 20);
-  };
 
-  const handleColorSelect = (color: 'red' | 'black') => {
+    try {
+      const telegramId = localStorage.getItem('telegramId');
+      if (telegramId && lobbyCode) {
+        await spinWheel(telegramId, lobbyCode);
+      }
+    } catch (error) {
+      console.error('Error spinning wheel:', error);
+    }
+  }, [rotationAngle, lobbyCode]);
+
+  const handleColorSelect = async (color: 'red' | 'black') => {
     setPlayerColor(color);
-    spin();
+    try {
+      const telegramId = localStorage.getItem('telegramId');
+      if (telegramId && lobbyCode) {
+        await chooseColor(telegramId, lobbyCode, color);
+      }
+    } catch (error) {
+      console.error('Error choosing color:', error);
+    }
   };
 
   const handleStop = () => {
@@ -70,34 +99,12 @@ const Game: React.FC = () => {
     }
     setIsSpinning(false);
     
-    const finalAngle = (360 - (rotationAngle % 360)) % 360; // Инвертируем угол, так как колесо вращается по часовой стрелке
+    const finalAngle = (360 - (rotationAngle % 360)) % 360;
     const segment = Math.floor(finalAngle / SEGMENT_DEGREE);
     const isRed = segment % 2 === 0;
     const finalColor = isRed ? 'red' : 'black';
     
     setLandedColor(finalColor);
-    
-    if (playerColor === finalColor) {
-      setResult('win');
-    } else {
-      setResult('lose');
-    }
-  };
-
-  const handleNextRound = () => {
-    if (currentRound < 3) {
-      setCurrentRound(currentRound + 1);
-      setShowRoundInfo(true);
-      setPlayerColor(null);
-      setResult(null);
-      setRotationAngle(0);
-      setIsSpinning(false);
-      setTimeLeft(TIME_LIMIT);
-      setLandedColor(null);
-    } else {
-      // Игра завершена, можно добавить логику для завершения игры
-      console.log('Игра завершена');
-    }
   };
 
   const renderWheel = () => {
@@ -128,10 +135,10 @@ const Game: React.FC = () => {
     return segments;
   };
 
-  if (showRoundInfo) {
+  if (!game) {
     return (
       <div className="flex flex-col h-screen bg-gradient-to-b from-gray-900 to-black text-white items-center justify-center">
-        <div className="text-4xl font-bold mb-4">Раунд {currentRound}/3</div>
+        <div className="text-4xl font-bold mb-4">Загрузка игры...</div>
       </div>
     );
   }
@@ -139,7 +146,7 @@ const Game: React.FC = () => {
   return (
     <div className="flex flex-col h-screen bg-gradient-to-b from-gray-900 to-black text-white p-4">
       <div className="text-center mb-4">
-        <div className="text-2xl font-bold">Выберите цвет</div>
+        <div className="text-2xl font-bold">Раунд {game.currentRound}/5</div>
         <div className="text-xl mt-2">Время: {(timeLeft / 1000).toFixed(1)} сек</div>
       </div>
 
@@ -179,6 +186,15 @@ const Game: React.FC = () => {
         </button>
       </div>
 
+      {!isSpinning && playerColor && (
+        <button
+          className="mt-4 w-full py-4 bg-blue-600 rounded-xl"
+          onClick={handleSpin}
+        >
+          Крутить колесо
+        </button>
+      )}
+
       {isSpinning && (
         <button
           className="mt-4 w-full py-4 bg-blue-600 rounded-xl"
@@ -188,23 +204,14 @@ const Game: React.FC = () => {
         </button>
       )}
 
-      {result && (
+      {landedColor && (
         <div className="mt-4 text-center">
           <div className="text-2xl font-bold mb-2">
-            {result === 'win' ? 'Вы выиграли!' : 'Вы проиграли'}
-          </div>
-          <div className="text-xl mb-2">
             Выпал цвет: <span className={landedColor === 'red' ? 'text-red-500' : 'text-gray-300'}>{landedColor}</span>
           </div>
           <div className="text-xl mb-2">
             Ваш выбор: <span className={playerColor === 'red' ? 'text-red-500' : 'text-gray-300'}>{playerColor}</span>
           </div>
-          <button
-            className="w-full py-4 bg-green-600 rounded-xl"
-            onClick={handleNextRound}
-          >
-            {currentRound < 3 ? 'Следующий раунд' : 'Завершить игру'}
-          </button>
         </div>
       )}
     </div>
