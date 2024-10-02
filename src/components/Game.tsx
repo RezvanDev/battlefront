@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getGameStatus, chooseColor, spinWheel } from '../api/api';
+import { getGameStatus, chooseColor } from '../api/api';
+import { useTelegram } from '../context/TelegramContext';
 
 const SEGMENTS = 50;
 const SEGMENT_DEGREE = 360 / SEGMENTS;
@@ -9,15 +10,14 @@ const TIME_LIMIT = 10000; // 10 секунд
 const Game: React.FC = () => {
   const { lobbyCode } = useParams<{ lobbyCode: string }>();
   const navigate = useNavigate();
+  const { user } = useTelegram();
   const [game, setGame] = useState<any>(null);
   const [playerColor, setPlayerColor] = useState<'red' | 'black' | null>(null);
+  const [opponentColor, setOpponentColor] = useState<'red' | 'black' | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
   const [rotationAngle, setRotationAngle] = useState(0);
   const [timeLeft, setTimeLeft] = useState(TIME_LIMIT);
   const [landedColor, setLandedColor] = useState<'red' | 'black' | null>(null);
-
-  const spinIntervalRef = useRef<number | null>(null);
-  const timeIntervalRef = useRef<number | null>(null);
 
   const fetchGameStatus = useCallback(async () => {
     if (!lobbyCode) return;
@@ -40,71 +40,58 @@ const Game: React.FC = () => {
   }, [fetchGameStatus]);
 
   useEffect(() => {
-    if (isSpinning) {
-      timeIntervalRef.current = window.setInterval(() => {
+    if (game) {
+      const isCreator = user?.id === game.creator.id;
+      setPlayerColor(isCreator ? game.creatorColor : game.participantColor);
+      setOpponentColor(isCreator ? game.participantColor : game.creatorColor);
+
+      if (game.creatorColor && game.participantColor && !isSpinning) {
+        setIsSpinning(true);
+        animateSpin(game.lastSpinResult);
+      }
+    }
+  }, [game, user, isSpinning]);
+
+  useEffect(() => {
+    if (!playerColor && !isSpinning) {
+      const timer = setInterval(() => {
         setTimeLeft((prevTime) => {
           if (prevTime <= 0) {
-            handleStop();
+            clearInterval(timer);
+            // Автоматически выбираем случайный цвет, если время истекло
+            handleColorSelect(Math.random() < 0.5 ? 'red' : 'black');
             return 0;
           }
-          return prevTime - 100;
+          return prevTime - 1000;
         });
-      }, 100);
-    } else {
-      if (timeIntervalRef.current) {
-        clearInterval(timeIntervalRef.current);
-      }
-    }
-    return () => {
-      if (timeIntervalRef.current) {
-        clearInterval(timeIntervalRef.current);
-      }
-    };
-  }, [isSpinning]);
+      }, 1000);
 
-  const handleSpin = useCallback(async () => {
-    setIsSpinning(true);
-    setTimeLeft(TIME_LIMIT);
-    let angle = rotationAngle;
-    spinIntervalRef.current = window.setInterval(() => {
-      angle += 10;
-      setRotationAngle(angle % 360);
-    }, 20);
-
-    try {
-      const telegramId = localStorage.getItem('telegramId');
-      if (telegramId && lobbyCode) {
-        await spinWheel(telegramId, lobbyCode);
-      }
-    } catch (error) {
-      console.error('Error spinning wheel:', error);
+      return () => clearInterval(timer);
     }
-  }, [rotationAngle, lobbyCode]);
+  }, [playerColor, isSpinning]);
 
   const handleColorSelect = async (color: 'red' | 'black') => {
-    setPlayerColor(color);
+    if (!user?.id || !lobbyCode) return;
     try {
-      const telegramId = localStorage.getItem('telegramId');
-      if (telegramId && lobbyCode) {
-        await chooseColor(telegramId, lobbyCode, color);
-      }
+      await chooseColor(user.id.toString(), lobbyCode, color);
+      setPlayerColor(color);
+      setTimeLeft(TIME_LIMIT); // Сбрасываем таймер после выбора цвета
     } catch (error) {
       console.error('Error choosing color:', error);
     }
   };
 
-  const handleStop = () => {
-    if (spinIntervalRef.current) {
-      clearInterval(spinIntervalRef.current);
-    }
-    setIsSpinning(false);
-    
-    const finalAngle = (360 - (rotationAngle % 360)) % 360;
-    const segment = Math.floor(finalAngle / SEGMENT_DEGREE);
-    const isRed = segment % 2 === 0;
-    const finalColor = isRed ? 'red' : 'black';
-    
-    setLandedColor(finalColor);
+  const animateSpin = (finalColor: 'red' | 'black') => {
+    let angle = 0;
+    const spinInterval = setInterval(() => {
+      angle += 10;
+      setRotationAngle(angle % 360);
+      if (angle >= 720 + Math.random() * 360) {
+        clearInterval(spinInterval);
+        setIsSpinning(false);
+        setLandedColor(finalColor);
+      }
+    }, 20);
   };
 
   const renderWheel = () => {
@@ -136,18 +123,25 @@ const Game: React.FC = () => {
   };
 
   if (!game) {
-    return (
-      <div className="flex flex-col h-screen bg-gradient-to-b from-gray-900 to-black text-white items-center justify-center">
-        <div className="text-4xl font-bold mb-4">Загрузка игры...</div>
-      </div>
-    );
+    return <div>Loading...</div>;
   }
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-b from-gray-900 to-black text-white p-4">
       <div className="text-center mb-4">
         <div className="text-2xl font-bold">Раунд {game.currentRound}/5</div>
-        <div className="text-xl mt-2">Время: {(timeLeft / 1000).toFixed(1)} сек</div>
+        <div className="text-xl mt-2">Время: {Math.max(0, timeLeft / 1000).toFixed(1)} сек</div>
+      </div>
+
+      <div className="flex justify-between mb-4">
+        <div>
+          <p>Вы: {game.creator.id === user?.id ? game.creatorWins : game.participantWins} побед</p>
+          <p>Цвет: {playerColor || 'Не выбран'}</p>
+        </div>
+        <div>
+          <p>Оппонент: {game.creator.id === user?.id ? game.participantWins : game.creatorWins} побед</p>
+          <p>Цвет: {opponentColor || 'Не выбран'}</p>
+        </div>
       </div>
 
       <div className="flex-grow flex flex-col items-center justify-center relative">
@@ -169,48 +163,27 @@ const Game: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex justify-center space-x-4 mt-4">
-        <button
-          className={`w-1/2 py-4 rounded-xl ${playerColor === 'red' ? 'bg-red-600' : 'bg-red-800'}`}
-          onClick={() => handleColorSelect('red')}
-          disabled={playerColor !== null || isSpinning}
-        >
-          Красный
-        </button>
-        <button
-          className={`w-1/2 py-4 rounded-xl ${playerColor === 'black' ? 'bg-gray-800' : 'bg-gray-900'}`}
-          onClick={() => handleColorSelect('black')}
-          disabled={playerColor !== null || isSpinning}
-        >
-          Черный
-        </button>
-      </div>
-
-      {!isSpinning && playerColor && (
-        <button
-          className="mt-4 w-full py-4 bg-blue-600 rounded-xl"
-          onClick={handleSpin}
-        >
-          Крутить колесо
-        </button>
-      )}
-
-      {isSpinning && (
-        <button
-          className="mt-4 w-full py-4 bg-blue-600 rounded-xl"
-          onClick={handleStop}
-        >
-          Остановить
-        </button>
+      {!playerColor && !isSpinning && (
+        <div className="flex justify-center space-x-4 mt-4">
+          <button
+            className="w-1/2 py-4 rounded-xl bg-red-600"
+            onClick={() => handleColorSelect('red')}
+          >
+            Красный
+          </button>
+          <button
+            className="w-1/2 py-4 rounded-xl bg-gray-800"
+            onClick={() => handleColorSelect('black')}
+          >
+            Черный
+          </button>
+        </div>
       )}
 
       {landedColor && (
         <div className="mt-4 text-center">
           <div className="text-2xl font-bold mb-2">
             Выпал цвет: <span className={landedColor === 'red' ? 'text-red-500' : 'text-gray-300'}>{landedColor}</span>
-          </div>
-          <div className="text-xl mb-2">
-            Ваш выбор: <span className={playerColor === 'red' ? 'text-red-500' : 'text-gray-300'}>{playerColor}</span>
           </div>
         </div>
       )}

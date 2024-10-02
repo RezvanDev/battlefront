@@ -17,6 +17,7 @@ const WaitingRoom: React.FC = () => {
         }
       } catch (error) {
         console.error('Error checking game status:', error);
+        alert('Произошла ошибка при проверке статуса игры. Пожалуйста, попробуйте позже.');
       }
     };
 

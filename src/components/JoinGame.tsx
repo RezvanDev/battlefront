@@ -8,6 +8,11 @@ const JoinGame: React.FC = () => {
   const navigate = useNavigate();
 
   const handleJoin = async () => {
+    if (!lobbyCode.trim()) {
+      alert('Пожалуйста, введите код лобби');
+      return;
+    }
+
     try {
       const telegramId = localStorage.getItem('telegramId');
       if (!telegramId) {
