@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getGameStatus, chooseColor } from '../api/api';
+import { getGameStatus, chooseColor, spinWheel } from '../api/api';
 import { useTelegram } from '../context/TelegramContext';
 
 const SEGMENTS = 50;
@@ -46,19 +46,17 @@ const Game: React.FC = () => {
       setOpponentColor(isCreator ? game.participantColor : game.creatorColor);
 
       if (game.creatorColor && game.participantColor && !isSpinning) {
-        setIsSpinning(true);
-        animateSpin(game.lastSpinResult);
+        handleSpin();
       }
     }
   }, [game, user, isSpinning]);
 
   useEffect(() => {
-    if (!playerColor && !isSpinning) {
+    if (!playerColor && !isSpinning && game?.status === 'PLAYING') {
       const timer = setInterval(() => {
         setTimeLeft((prevTime) => {
           if (prevTime <= 0) {
             clearInterval(timer);
-            // Автоматически выбираем случайный цвет, если время истекло
             handleColorSelect(Math.random() < 0.5 ? 'red' : 'black');
             return 0;
           }
@@ -68,16 +66,29 @@ const Game: React.FC = () => {
 
       return () => clearInterval(timer);
     }
-  }, [playerColor, isSpinning]);
+  }, [playerColor, isSpinning, game]);
 
   const handleColorSelect = async (color: 'red' | 'black') => {
     if (!user?.id || !lobbyCode) return;
     try {
       await chooseColor(user.id.toString(), lobbyCode, color);
       setPlayerColor(color);
-      setTimeLeft(TIME_LIMIT); // Сбрасываем таймер после выбора цвета
+      setTimeLeft(TIME_LIMIT);
+      fetchGameStatus();
     } catch (error) {
       console.error('Error choosing color:', error);
+    }
+  };
+
+  const handleSpin = async () => {
+    if (!user?.id || !lobbyCode) return;
+    setIsSpinning(true);
+    try {
+      const result = await spinWheel(user.id.toString(), lobbyCode);
+      animateSpin(result.result.wheelColor);
+    } catch (error) {
+      console.error('Error spinning wheel:', error);
+      setIsSpinning(false);
     }
   };
 
@@ -90,6 +101,7 @@ const Game: React.FC = () => {
         clearInterval(spinInterval);
         setIsSpinning(false);
         setLandedColor(finalColor);
+        fetchGameStatus();
       }
     }, 20);
   };
@@ -163,7 +175,7 @@ const Game: React.FC = () => {
         </div>
       </div>
 
-      {!playerColor && !isSpinning && (
+      {!playerColor && !isSpinning && game.status === 'PLAYING' && (
         <div className="flex justify-center space-x-4 mt-4">
           <button
             className="w-1/2 py-4 rounded-xl bg-red-600"
